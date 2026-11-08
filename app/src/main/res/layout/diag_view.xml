@@ -25,4 +25,11 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Relancer le diagnostic" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/diagReport"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Copier le rapport technique (à envoyer)" />
 </LinearLayout>

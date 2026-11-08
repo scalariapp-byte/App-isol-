@@ -98,6 +98,7 @@ class MainActivity : AppCompatActivity() {
         val appsHeader = inflateHeader(R.layout.header_apps)
         diagView = inflateHeader(R.layout.diag_view)
         diagView.findViewById<View>(R.id.diagRerun).setOnClickListener { runDiagnostic() }
+        diagView.findViewById<View>(R.id.diagReport).setOnClickListener { copyReport() }
         val homeTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header))
         val appsTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(appsHeader), adapter)
         val diagTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(diagView))
@@ -498,6 +499,38 @@ class MainActivity : AppCompatActivity() {
         val problems = checks.count { it.ok == false }
         diagView.findViewById<TextView>(R.id.diagSummary).text =
             if (problems == 0) "✅ Aucun problème détecté" else "❌ $problems problème(s) détecté(s) : appuie sur « Réparer »"
+    }
+
+    /** Rapport technique (via Shizuku) copié dans le presse-papiers, pour le support. */
+    private fun copyReport() {
+        val u = Iso.isolatedUserId(this)
+        val pkg = packageName
+        Toast.makeText(this, "Analyse…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val sb = StringBuilder()
+            sb.append("Isolateur ").append(packageManager.getPackageInfo(pkg, 0).versionName)
+                .append(" · Android ").append(Build.VERSION.RELEASE).append(" · ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append('\n')
+            sb.append("profil isolé=").append(u).append(" · liaison=").append(channelOk())
+                .append(" · shizuku=").append(Shell.granted()).append('\n')
+            if (Shell.granted()) {
+                val cmds = listOf(
+                    "pm list users",
+                    "dpm list-owners 2>/dev/null || dumpsys device_policy | grep -iE 'admin|owner' | head -20",
+                    "dumpsys package $pkg | grep -E 'versionCode|versionName|User [0-9]+:|enabled=|installed=' | head -30",
+                    "cmd package query-activities --user 0 -a ${Iso.ACTION_OPEN_MANAGER} | head -20",
+                    u?.let { "cmd package query-activities --user $it -a ${Iso.ACTION_OPEN_MANAGER} | head -20" },
+                    u?.let { "pm list packages --user $it | grep -E 'isolapp|vending' " },
+                    u?.let { "am start --user $it -n $pkg/${ProvisionedActivity::class.java.name}" },
+                )
+                for (c in cmds.filterNotNull()) sb.append("\n$ ").append(c).append('\n').append(Shell.run(c).second.take(1500)).append('\n')
+            } else sb.append("(Shizuku inactif : rapport limité)\n")
+            val text = sb.toString()
+            runOnUiThread {
+                getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("Rapport Isolateur", text))
+                Toast.makeText(this, "Rapport copié : colle-le dans la conversation", Toast.LENGTH_LONG).show()
+            }
+        }.start()
     }
 
     private fun openIntent(i: Intent) = runCatching { startActivity(i) }.onFailure {
