@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="5dp"
+    app:cardCornerRadius="20dp"
+    app:contentPadding="0dp">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:minHeight="72dp"
     android:orientation="horizontal"
-    android:paddingHorizontal="20dp"
+    android:paddingHorizontal="16dp"
     android:paddingVertical="8dp">
 
     <ImageView
@@ -59,3 +68,4 @@
         android:contentDescription="Plus d'options"
         android:src="@drawable/ic_more" />
 </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
