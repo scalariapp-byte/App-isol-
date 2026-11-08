@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Isolateur" parent="Theme.Material3.DayNight">
+    <style name="Theme.Isolateur" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">#3F51B5</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="materialCardViewStyle">@style/Widget.Isolateur.Card</item>
     </style>
+
+    <style name="Widget.Isolateur.Card" parent="Widget.Material3.CardView.Filled">
+        <item name="cardCornerRadius">24dp</item>
+        <item name="contentPadding">20dp</item>
+    </style>
+
     <style name="Theme.Isolateur.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
@@ -10,11 +18,14 @@
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowAnimationStyle">@null</item>
     </style>
+
     <style name="Theme.Isolateur.Home" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowShowWallpaper">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
     </style>
 </resources>

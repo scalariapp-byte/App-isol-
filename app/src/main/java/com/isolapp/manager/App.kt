@@ -7,6 +7,8 @@ import android.app.NotificationManager
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Couleurs Material You tirées du fond d'écran (Android 12+).
+        com.google.android.material.color.DynamicColors.applyToActivitiesIfAvailable(this)
         Iso.syncComponents(this)
         val nm = getSystemService(NotificationManager::class.java)
         // Canaux discrets : priorité minimale = pas d'icône dans la barre d'état.

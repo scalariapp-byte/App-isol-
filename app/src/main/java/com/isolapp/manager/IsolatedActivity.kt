@@ -28,6 +28,7 @@ class IsolatedActivity : AppCompatActivity() {
         if (!Iso.isIsolatedSide(this)) { finish(); return }
         Iso.ensureIsolatedSetup(this)
         setContentView(R.layout.activity_isolated)
+        setSupportActionBar(findViewById(R.id.toolbar))
         progress = findViewById(R.id.progress)
         adapter = AppAdapter(onAction = ::launch, onAuto = ::setAutostart, onMore = ::showMenu)
         findViewById<RecyclerView>(R.id.list).apply {

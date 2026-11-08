@@ -31,12 +31,17 @@ import rikka.shizuku.Shizuku
 /** Écran côté personnel. */
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var status: TextView
+    private lateinit var heroTitle: TextView
+    private lateinit var heroSub: TextView
     private lateinit var btnCreate: MaterialButton
     private lateinit var rowButtons: LinearLayout
+    private lateinit var options: LinearLayout
+    private lateinit var btnHome: MaterialButton
+    private lateinit var homeSub: TextView
     private lateinit var swAuto: MaterialSwitch
     private lateinit var swDefault: MaterialSwitch
     private lateinit var shizukuStatus: TextView
+    private lateinit var shizukuDot: View
     private lateinit var btnShizuku: MaterialButton
     private lateinit var adapter: AppAdapter
 
@@ -61,27 +66,44 @@ class MainActivity : AppCompatActivity() {
             return
         }
         setContentView(R.layout.activity_main)
-        status = findViewById(R.id.status)
-        btnCreate = findViewById(R.id.btnCreate)
-        rowButtons = findViewById(R.id.rowButtons)
-        swAuto = findViewById(R.id.swAuto)
-        swDefault = findViewById(R.id.swDefault)
-        shizukuStatus = findViewById(R.id.shizukuStatus)
-        btnShizuku = findViewById(R.id.btnShizuku)
+        setSupportActionBar(findViewById(R.id.toolbar))
+        findViewById<com.google.android.material.appbar.CollapsingToolbarLayout>(R.id.collapsing).title =
+            getString(R.string.app_name)
+
+        val header = layoutInflater.inflate(R.layout.header_main, null, false)
+        header.layoutParams = RecyclerView.LayoutParams(
+            RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT
+        )
+        heroTitle = header.findViewById(R.id.heroTitle)
+        heroSub = header.findViewById(R.id.heroSub)
+        btnCreate = header.findViewById(R.id.btnCreate)
+        rowButtons = header.findViewById(R.id.rowButtons)
+        options = header.findViewById(R.id.options)
+        btnHome = header.findViewById(R.id.btnHome)
+        homeSub = header.findViewById(R.id.homeSub)
+        swAuto = header.findViewById(R.id.swAuto)
+        swDefault = header.findViewById(R.id.swDefault)
+        shizukuStatus = header.findViewById(R.id.shizukuStatus)
+        shizukuDot = header.findViewById(R.id.shizukuDot)
+        btnShizuku = header.findViewById(R.id.btnShizuku)
 
         adapter = AppAdapter(onAction = ::onAppAction, onMore = ::onAppMore)
         findViewById<RecyclerView>(R.id.list).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = this@MainActivity.adapter
+            adapter = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header), this@MainActivity.adapter)
         }
 
         btnCreate.setOnClickListener { createSpace() }
-        findViewById<MaterialButton>(R.id.btnManage).setOnClickListener { crossProfile(Iso.ACTION_OPEN_MANAGER) }
-        findViewById<MaterialButton>(R.id.btnStore).setOnClickListener { crossProfile(Iso.ACTION_OPEN_STORE) }
+        header.findViewById<MaterialButton>(R.id.btnManage).setOnClickListener { crossProfile(Iso.ACTION_OPEN_MANAGER) }
+        header.findViewById<MaterialButton>(R.id.btnStore).setOnClickListener { crossProfile(Iso.ACTION_OPEN_STORE) }
         swAuto.setOnCheckedChangeListener { _, on -> setAuto(on) }
         swDefault.setOnCheckedChangeListener { _, on -> setDefaultMode(on) }
         btnShizuku.setOnClickListener { onShizukuButton() }
-        findViewById<MaterialButton>(R.id.btnHome).setOnClickListener { chooseHome() }
+        btnHome.setOnClickListener { chooseHome() }
+        header.findViewById<com.google.android.material.chip.Chip>(R.id.chipSystem)
+            .setOnCheckedChangeListener { _, c -> showSystem = c; refresh() }
+        header.findViewById<com.google.android.material.chip.Chip>(R.id.chipRemoved)
+            .setOnCheckedChangeListener { _, c -> showRemoved = c; refresh() }
 
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
@@ -95,7 +117,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::status.isInitialized) refresh()
+        if (::heroTitle.isInitialized) refresh()
     }
 
     // ---------- État général ----------
@@ -108,9 +130,14 @@ class MainActivity : AppCompatActivity() {
             Prefs.setPendingUninstall(this, false)
             runCatching { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))) }
         }
-        status.setText(if (has) R.string.space_ok else R.string.no_space)
+        heroTitle.text = if (has) "Espace isolé actif" else "Aucun espace isolé"
+        heroSub.text = if (has) "Tes applis isolées ont leurs propres données, séparées du reste."
+        else "Crée-le pour y placer des applis : données, comptes et fichiers séparés."
         btnCreate.visibility = if (has) View.GONE else View.VISIBLE
-        listOf(rowButtons, findViewById<View>(R.id.btnHome), swAuto, swDefault).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
+        listOf(rowButtons, options).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
+        val isHome = isDefaultHome()
+        btnHome.text = if (isHome) "Actif ✓" else "Activer"
+        btnHome.isEnabled = !isHome
         setChecked(swAuto, Prefs.monitor(this))
         setChecked(swDefault, Prefs.defaultMode(this))
         refreshShizuku()
@@ -133,6 +160,9 @@ class MainActivity : AppCompatActivity() {
             else -> R.string.shizuku_ok to 0
         }
         shizukuStatus.setText(text)
+        shizukuDot.backgroundTintList = android.content.res.ColorStateList.valueOf(
+            if (button == 0) 0xFF2E7D32.toInt() else if (text == R.string.shizuku_off) 0xFF9E9E9E.toInt() else 0xFFF9A825.toInt()
+        )
         btnShizuku.visibility = if (button == 0) View.GONE else View.VISIBLE
         if (button != 0) btnShizuku.setText(button)
     }
@@ -379,6 +409,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun isDefaultHome(): Boolean = runCatching {
+        packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY
+        )?.activityInfo?.packageName == packageName
+    }.getOrDefault(false)
+
+    private class HeaderAdapter(private val view: View) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int) =
+            object : RecyclerView.ViewHolder(view) {}
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {}
+        override fun getItemCount() = 1
+        override fun getItemViewType(position: Int) = -1
+    }
+
     /** Propose Isolateur comme écran d'accueil par défaut. */
     private fun chooseHome() {
         val intent = if (Build.VERSION.SDK_INT >= 29) {
@@ -420,8 +464,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         if (Iso.isolatedProfile(this) == null) return false
         menuInflater.inflate(R.menu.main, menu)
-        menu.findItem(R.id.m_system).isChecked = showSystem
-        menu.findItem(R.id.m_removed).isChecked = showRemoved
         return true
     }
 
@@ -429,8 +471,6 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.m_install -> crossProfile(Iso.ACTION_INSTALL_APK)
             R.id.m_remove_space -> confirmRemoveSpace()
-            R.id.m_system -> { showSystem = !showSystem; item.isChecked = showSystem; refresh() }
-            R.id.m_removed -> { showRemoved = !showRemoved; item.isChecked = showRemoved; refresh() }
             else -> return super.onOptionsItemSelected(item)
         }
         return true

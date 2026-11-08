@@ -105,6 +105,16 @@ object Prefs {
         sp(ctx).edit().putStringSet("removed", s).apply()
     }
     fun setMonitor(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("monitor", v).apply()
+    /** Applis épinglées sur l'accueil et dans le dock (clés « utilisateur|composant »). */
+    fun pins(ctx: Context): List<String> = list(ctx, "home_pins") ?: emptyList()
+    fun setPins(ctx: Context, v: List<String>) = setList(ctx, "home_pins", v)
+    fun dock(ctx: Context): List<String>? = list(ctx, "dock")
+    fun setDock(ctx: Context, v: List<String>) = setList(ctx, "dock", v)
+    private fun list(ctx: Context, k: String): List<String>? =
+        sp(ctx).getString(k, null)?.split('\n')?.filter { it.isNotBlank() }
+    private fun setList(ctx: Context, k: String, v: List<String>) =
+        sp(ctx).edit().putString(k, v.joinToString("\n")).apply()
+
     fun pendingUninstall(ctx: Context) = sp(ctx).getBoolean("pending_uninstall", false)
     fun setPendingUninstall(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("pending_uninstall", v).apply()
 
