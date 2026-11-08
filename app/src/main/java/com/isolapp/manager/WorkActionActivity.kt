@@ -32,6 +32,17 @@ class WorkActionActivity : Activity() {
         when (intent.action) {
             Iso.ACTION_CLONE -> clone(intent.getStringExtra(Iso.EXTRA_PKG))
             Iso.ACTION_INSTALL_APK -> pickApk()
+            Iso.ACTION_OPEN_MANAGER -> {
+                startActivity(Intent(this, IsolatedActivity::class.java))
+                finish()
+            }
+            Iso.ACTION_OPEN_STORE -> {
+                Iso.ensureIsolatedSetup(this)
+                val i = packageManager.getLaunchIntentForPackage(Iso.PLAY_STORE)
+                if (i != null) startActivity(i)
+                else Toast.makeText(this, "Play Store absent de l'espace isolé", Toast.LENGTH_LONG).show()
+                finish()
+            }
             else -> finish()
         }
     }

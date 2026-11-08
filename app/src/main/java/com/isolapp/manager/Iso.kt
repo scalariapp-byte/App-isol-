@@ -14,6 +14,12 @@ import android.os.UserManager
 object Iso {
     const val ACTION_CLONE = "com.isolapp.manager.action.CLONE"
     const val ACTION_INSTALL_APK = "com.isolapp.manager.action.INSTALL_APK"
+    const val ACTION_OPEN_MANAGER = "com.isolapp.manager.action.OPEN_MANAGER"
+    const val ACTION_OPEN_STORE = "com.isolapp.manager.action.OPEN_STORE"
+    const val PLAY_STORE = "com.android.vending"
+
+    /** Paquets nécessaires au Play Store dans l'espace isolé. */
+    private val STORE_PACKAGES = listOf(PLAY_STORE, "com.google.android.gms", "com.google.android.gsf")
     const val EXTRA_PKG = "pkg"
     const val EXTRA_NOTIF_ID = "notif_id"
 
@@ -37,6 +43,7 @@ object Iso {
         val dpm = dpm(ctx)
         val admin = admin(ctx)
         runCatching { dpm.setProfileName(admin, ctx.getString(R.string.profile_name)) }
+        runCatching { dpm.setOrganizationName(admin, ctx.getString(R.string.profile_name)) }
         runCatching { dpm.setProfileEnabled(admin) }
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES) }
         runCatching {
@@ -44,25 +51,39 @@ object Iso {
             val filter = IntentFilter().apply {
                 addAction(ACTION_CLONE)
                 addAction(ACTION_INSTALL_APK)
+                addAction(ACTION_OPEN_MANAGER)
+                addAction(ACTION_OPEN_STORE)
                 addCategory(Intent.CATEGORY_DEFAULT)
             }
             dpm.addCrossProfileIntentFilter(admin, filter, DevicePolicyManager.FLAG_PARENT_CAN_ACCESS_MANAGED)
         }
+        // Play Store disponible dans l'espace : ce qu'on y télécharge s'installe directement dedans.
+        for (p in STORE_PACKAGES) {
+            runCatching { dpm.installExistingPackage(admin, p) }
+            if (p !in Prefs.removed(ctx)) runCatching { dpm.setApplicationHidden(admin, p, false) }
+        }
         syncComponents(ctx)
     }
+
+    /** Identifiant utilisateur Android du profil isolé (UserHandle.hashCode() == identifiant). */
+    fun isolatedUserId(ctx: Context): Int? = isolatedProfile(ctx)?.hashCode()
 
     /**
      * WorkActionActivity ne doit exister que côté isolé : côté personnel on la désactive,
      * sinon Android proposerait un choix « Personnel / Isolé » au lieu de transférer la requête.
      */
     fun syncComponents(ctx: Context) {
-        val state = if (isIsolatedSide(ctx)) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        runCatching {
+        val iso = isIsolatedSide(ctx)
+        val on = PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        val off = PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        fun set(cls: String, enabled: Boolean) = runCatching {
             ctx.packageManager.setComponentEnabledSetting(
-                ComponentName(ctx, WorkActionActivity::class.java), state, PackageManager.DONT_KILL_APP
+                ComponentName(ctx.packageName, cls), if (enabled) on else off, PackageManager.DONT_KILL_APP
             )
         }
+        set(WorkActionActivity::class.java.name, iso)
+        // Discrétion : pas d'icône Isolateur dans l'espace isolé ; on le gère depuis le côté personnel.
+        set("${ctx.packageName}.Launcher", !iso)
     }
 }
 
@@ -70,6 +91,16 @@ object Prefs {
     private fun sp(ctx: Context) = ctx.getSharedPreferences("iso", Context.MODE_PRIVATE)
 
     fun monitor(ctx: Context) = sp(ctx).getBoolean("monitor", false)
+    fun defaultMode(ctx: Context) = sp(ctx).getBoolean("default_mode", false)
+    fun setDefaultMode(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("default_mode", v).apply()
+
+    /** Applis système supprimées de l'espace isolé (masquées définitivement, restaurables). */
+    fun removed(ctx: Context): Set<String> = HashSet(sp(ctx).getStringSet("removed", emptySet()) ?: emptySet())
+    fun setRemoved(ctx: Context, pkg: String, removed: Boolean) {
+        val s = removed(ctx).toMutableSet()
+        if (removed) s.add(pkg) else s.remove(pkg)
+        sp(ctx).edit().putStringSet("removed", s).apply()
+    }
     fun setMonitor(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("monitor", v).apply()
 
     /** Applis isolées dont le démarrage automatique est bloqué (gardées gelées). */

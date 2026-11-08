@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <queries>
+        <package android:name="moe.shizuku.privileged.api" />
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="false"
@@ -23,12 +27,18 @@
         <!-- Écran principal (côté personnel) ; dans l'espace isolé il redirige vers IsolatedActivity -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true" />
+
+        <!-- Icône du lanceur : désactivée dans l'espace isolé pour qu'aucune icône n'y apparaisse -->
+        <activity-alias
+            android:name=".Launcher"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!-- Gestionnaire des applis de l'espace isolé (s'exécute dans le profil isolé) -->
         <activity
@@ -45,6 +55,8 @@
             <intent-filter>
                 <action android:name="com.isolapp.manager.action.CLONE" />
                 <action android:name="com.isolapp.manager.action.INSTALL_APK" />
+                <action android:name="com.isolapp.manager.action.OPEN_MANAGER" />
+                <action android:name="com.isolapp.manager.action.OPEN_STORE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -125,5 +137,13 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Regel automatique des applications isolées à l'extinction de l'écran" />
         </service>
+        <!-- Shizuku : droits ADB (sans root) pour supprimer les applis système et déplacer silencieusement -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
 </manifest>

@@ -19,6 +19,30 @@ profil et en devient le **propriétaire** (Profile Owner), ce qui lui donne le d
 | Installer un APK directement dans l'espace | `PackageInstaller` (dans le profil) |
 | Détecter les installations faites ailleurs (Play Store, APK, autre magasin) | service qui écoute `PACKAGE_ADDED` et propose « Isoler » par notification |
 
+## Shizuku (recommandé)
+
+[Shizuku](https://shizuku.rikka.app/) donne à Isolateur les droits ADB **sans root**. Il débloque :
+
+- la **désinstallation des applis système** du profil personnel (`pm uninstall --user 0`, restaurable) ;
+- l'**isolation silencieuse** : chaque nouvelle appli est déplacée dans l'espace isolé sans confirmation ni notification ;
+- le **mode par défaut** : le Play Store personnel est désactivé, le seul Play Store restant est celui de
+  l'espace isolé, donc tout téléchargement s'installe directement dedans.
+
+Mise en route : installer Shizuku, le démarrer via *Débogage sans fil* (Android 11+), puis appuyer sur
+« Autoriser » dans Isolateur. Shizuku doit être redémarré après chaque redémarrage du téléphone
+(sans root).
+
+Les applis indispensables au téléphone (interface système, Paramètres, lanceur, clavier, services
+Google…) sont protégées contre la suppression.
+
+## Discrétion
+
+- Aucune icône Isolateur dans l'espace isolé ; tout se gère depuis le côté personnel.
+- Notifications de service en priorité minimale et masquées sur l'écran de verrouillage
+  (sur Android 13+ on peut les balayer ; on peut aussi couper leur canal dans les réglages de l'appli).
+- **Restent visibles, car imposés par Android** : le badge 💼 sur les icônes isolées, l'onglet
+  « Travail » du lanceur et la mention « profil professionnel » dans les Paramètres.
+
 ## Utilisation
 
 1. Installer l'APK, ouvrir **Isolateur**, appuyer sur **Créer l'espace isolé** et suivre l'assistant Android.

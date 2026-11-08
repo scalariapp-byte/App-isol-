@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Isolateur</string>
-    <string name="profile_name">Espace isolé</string>
+    <string name="profile_name">Applis</string>
     <string name="isolated_title">Espace isolé</string>
     <string name="no_space">Aucun espace isolé.\nCréez-le pour pouvoir y placer des applications. Elles y auront leurs propres données, comptes et fichiers, séparés du reste du téléphone.</string>
     <string name="space_ok">Espace isolé actif.\nApplications personnelles ci-dessous : « Isoler » en place une copie dans l\'espace isolé.</string>
@@ -23,4 +23,17 @@
     <string name="ch_new_app">Nouvelles applications</string>
     <string name="ch_freeze">Regel automatique</string>
     <string name="ignore">Ignorer</string>
+    <string name="open_store">Ouvrir le Play Store de l\'espace isolé</string>
+    <string name="auto_move">Isoler automatiquement chaque nouvelle appli</string>
+    <string name="default_mode">Mode par défaut : désactiver le Play Store personnel (tout ce que tu télécharges va dans l\'espace isolé)</string>
+    <string name="show_removed">Afficher les applis supprimées</string>
+    <string name="restore">Restaurer</string>
+    <string name="delete">Désinstaller</string>
+    <string name="shizuku_off">Shizuku non détecté : sans lui, pas de suppression des applis système ni d\'isolation silencieuse.</string>
+    <string name="shizuku_stopped">Shizuku installé mais arrêté : ouvre Shizuku et démarre-le (débogage sans fil).</string>
+    <string name="shizuku_need_perm">Shizuku démarré : autorise Isolateur.</string>
+    <string name="shizuku_ok">Shizuku actif : suppression des applis système et isolation silencieuse disponibles.</string>
+    <string name="shizuku_get">Installer Shizuku</string>
+    <string name="shizuku_open">Ouvrir Shizuku</string>
+    <string name="shizuku_grant">Autoriser</string>
 </resources>

@@ -20,6 +20,8 @@ data class AppRow(
     val showAuto: Boolean = false,
     val autoAllowed: Boolean = true,
     val showMore: Boolean = false,
+    val system: Boolean = false,
+    val removed: Boolean = false,
 )
 
 class AppAdapter(

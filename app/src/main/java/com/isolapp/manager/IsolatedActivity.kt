@@ -47,31 +47,40 @@ class IsolatedActivity : AppCompatActivity() {
         Thread {
             val pm = packageManager
             val blocked = Prefs.blocked(this)
+            val removed = Prefs.removed(this)
             val rows = pm.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
                 .asSequence()
                 .filter { it.packageName != packageName }
                 .map { it to Freezer.isFrozen(this, it.packageName) }
                 .filter { (ai, frozen) -> (ai.flags and ApplicationInfo.FLAG_INSTALLED) != 0 || frozen }
                 .filter { (ai, _) ->
-                    sys || (ai.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
+                    sys || ai.packageName in removed || (ai.flags and ApplicationInfo.FLAG_SYSTEM) == 0 ||
                         (ai.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
                 }
                 .map { (ai, frozen) ->
+                    val isRemoved = ai.packageName in removed
                     val isBlocked = ai.packageName in blocked
-                    val state = if (frozen) "❄ Gelée" else "▶ Active"
-                    val auto = if (isBlocked) " · démarrage auto bloqué" else ""
+                    val system = Critical.isSystem(ai)
+                    val state = when {
+                        isRemoved -> "🗑 Supprimée"
+                        frozen -> "❄ Gelée"
+                        else -> "▶ Active"
+                    }
+                    val auto = if (isBlocked && !isRemoved) " · démarrage auto bloqué" else ""
                     AppRow(
                         pkg = ai.packageName,
                         label = pm.getApplicationLabel(ai).toString(),
                         icon = runCatching { pm.getApplicationIcon(ai) }.getOrNull(),
-                        sub = state + auto,
-                        actionText = getString(R.string.launch),
-                        showAuto = true,
+                        sub = (if (system) "Système · " else "") + state + auto,
+                        actionText = getString(if (isRemoved) R.string.restore else R.string.launch),
+                        showAuto = !isRemoved,
                         autoAllowed = !isBlocked,
-                        showMore = true,
+                        showMore = !isRemoved,
+                        system = system,
+                        removed = isRemoved,
                     )
                 }
-                .sortedBy { it.label.lowercase() }
+                .sortedWith(compareBy({ it.removed }, { it.label.lowercase() }))
                 .toList()
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
@@ -82,6 +91,11 @@ class IsolatedActivity : AppCompatActivity() {
     }
 
     private fun launch(row: AppRow) {
+        if (row.removed) {
+            Prefs.setRemoved(this, row.pkg, false)
+            Freezer.setFrozen(this, row.pkg, false)
+            load(); return
+        }
         if (Freezer.isFrozen(this, row.pkg)) Freezer.setFrozen(this, row.pkg, false)
         if (row.pkg in Prefs.blocked(this)) AutoFreezeService.start(this)
         val i = packageManager.getLaunchIntentForPackage(row.pkg)
@@ -117,16 +131,33 @@ class IsolatedActivity : AppCompatActivity() {
                             )
                         }
                     }
-                    3 -> {
-                        if (frozen) Freezer.setFrozen(this@IsolatedActivity, row.pkg, false)
-                        Prefs.setBlocked(this@IsolatedActivity, row.pkg, false)
-                        runCatching { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${row.pkg}"))) }
-                    }
+                    3 -> uninstall(row, frozen)
                 }
                 true
             }
             show()
         }
+    }
+
+    private fun uninstall(row: AppRow, frozen: Boolean) {
+        if (row.system) {
+            // Une appli système ne peut pas être désinstallée d'un profil : on la masque définitivement.
+            if (Critical.isCritical(this, row.pkg)) {
+                Toast.makeText(this, "${row.label} est indispensable, suppression bloquée", Toast.LENGTH_LONG).show()
+                return
+            }
+            if (Freezer.setFrozen(this, row.pkg, true)) {
+                Prefs.setRemoved(this, row.pkg, true)
+                Prefs.setBlocked(this, row.pkg, false)
+            } else {
+                Toast.makeText(this, "Action refusée par le système", Toast.LENGTH_SHORT).show()
+            }
+            load()
+            return
+        }
+        if (frozen) Freezer.setFrozen(this, row.pkg, false)
+        Prefs.setBlocked(this, row.pkg, false)
+        runCatching { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${row.pkg}"))) }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {

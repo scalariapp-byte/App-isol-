@@ -26,7 +26,12 @@ class MonitorService : Service() {
             if (i.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
             val pkg = i.data?.schemeSpecificPart ?: return
             if (pkg == packageName) return
-            notifyNewApp(c, pkg)
+            if (Shell.granted()) {
+                // Mode automatique : déplacement silencieux, sans notification.
+                Thread { if (!Mover.silentIsolate(c, pkg)) notifyNewApp(c, pkg) }.start()
+            } else {
+                notifyNewApp(c, pkg)
+            }
         }
     }
 
@@ -34,8 +39,9 @@ class MonitorService : Service() {
         super.onCreate()
         val n = NotificationCompat.Builder(this, App.CH_MONITOR)
             .setSmallIcon(R.drawable.ic_notif)
-            .setContentTitle("Surveillance des installations active")
-            .setContentText("Les nouvelles applis vous seront proposées pour l'isolation")
+            .setContentTitle(getString(R.string.app_name))
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setOngoing(true)
             .setContentIntent(
                 PendingIntent.getActivity(
@@ -86,7 +92,8 @@ class MonitorService : Service() {
             val n = NotificationCompat.Builder(ctx, App.CH_NEW_APP)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setContentTitle("$label vient d'être installée")
-                .setContentText("La placer dans l'espace isolé ?")
+                .setContentText("Appuyez pour l'isoler")
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
                 .setAutoCancel(true)
                 .setContentIntent(isolate)
                 .addAction(0, ctx.getString(R.string.isolate), isolate)
