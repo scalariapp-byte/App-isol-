@@ -498,6 +498,12 @@ class MainActivity : AppCompatActivity() {
             R.id.m_install -> crossProfile(Iso.ACTION_INSTALL_APK)
             R.id.m_remove_space -> confirmRemoveSpace()
             R.id.m_gestures -> xiaomiGestures()
+            R.id.m_files -> {
+                // Appli liée : son écran « Démarrage automatique » bloque le démarrage via Isolateur.
+                val i = packageManager.getLaunchIntentForPackage("com.scalari.fichiers")
+                    ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/scalariapp-byte/Gestionnaire-de-fichiers-android/releases/latest"))
+                runCatching { startActivity(i) }
+            }
             else -> return super.onOptionsItemSelected(item)
         }
         return true
