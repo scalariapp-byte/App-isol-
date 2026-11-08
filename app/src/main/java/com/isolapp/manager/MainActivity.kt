@@ -93,7 +93,10 @@ class MainActivity : AppCompatActivity() {
             adapter = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header), this@MainActivity.adapter)
         }
 
-        btnCreate.setOnClickListener { createSpace() }
+        btnCreate.setOnClickListener {
+            val p = Iso.isolatedProfile(this)
+            if (p != null) resume(p) else createSpace()
+        }
         header.findViewById<MaterialButton>(R.id.btnManage).setOnClickListener { crossProfile(Iso.ACTION_OPEN_MANAGER) }
         header.findViewById<MaterialButton>(R.id.btnStore).setOnClickListener { crossProfile(Iso.ACTION_OPEN_STORE) }
         swAuto.setOnCheckedChangeListener { _, on -> setAuto(on) }
@@ -131,10 +134,14 @@ class MainActivity : AppCompatActivity() {
             Prefs.setPendingUninstall(this, false)
             runCatching { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))) }
         }
-        heroTitle.text = if (has) "Espace isolé actif" else "Aucun espace isolé"
+        val um = getSystemService(android.os.UserManager::class.java)
+        val paused = profile != null && runCatching { um.isQuietModeEnabled(profile) }.getOrDefault(false)
+        heroTitle.text = when { paused -> "Espace isolé en pause"; has -> "Espace isolé actif"; else -> "Aucun espace isolé" }
         heroSub.text = if (has) "Tes applis isolées ont leurs propres données, séparées du reste."
         else "Crée-le pour y placer des applis : données, comptes et fichiers séparés."
-        btnCreate.visibility = if (has) View.GONE else View.VISIBLE
+        btnCreate.visibility = if (has && !paused) View.GONE else View.VISIBLE
+        btnCreate.text = if (paused) "Réactiver l'espace isolé" else getString(R.string.create_space)
+        if (paused) heroSub.text = "Les applis isolées sont arrêtées. Appuie sur Réactiver."
         listOf(rowButtons, options).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
         val isHome = isDefaultHome()
         btnHome.text = if (isHome) "Actif ✓" else "Activer"
@@ -395,6 +402,18 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Annuler", null)
             .show()
+    }
+
+    /** Sort l'espace isolé de pause (autorisé si Isolateur est l'écran d'accueil par défaut). */
+    private fun resume(p: android.os.UserHandle) {
+        val ok = runCatching {
+            getSystemService(android.os.UserManager::class.java).requestQuietModeEnabled(false, p)
+        }.isSuccess
+        if (!ok) Toast.makeText(
+            this, "Utilise la tuile « Applis pro » des réglages rapides, ou mets Isolateur en écran d'accueil.",
+            Toast.LENGTH_LONG
+        ).show()
+        btnCreate.postDelayed({ refresh() }, 1500)
     }
 
     private fun confirmRemoveSpace() {
