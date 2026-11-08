@@ -44,6 +44,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shizukuDot: View
     private lateinit var btnShizuku: MaterialButton
     private lateinit var cardSteps: View
+    private lateinit var diagView: View
+    private lateinit var list: RecyclerView
+    private lateinit var tabs: com.google.android.material.bottomnavigation.BottomNavigationView
     private lateinit var steps: List<TextView>
     private lateinit var adapter: AppAdapter
 
@@ -92,9 +95,24 @@ class MainActivity : AppCompatActivity() {
         steps = listOf(R.id.step1, R.id.step2, R.id.step3, R.id.step4).map { header.findViewById(it) }
 
         adapter = AppAdapter(onAction = ::onAppAction, onMore = ::onAppMore)
-        findViewById<RecyclerView>(R.id.list).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header), this@MainActivity.adapter)
+        val appsHeader = inflateHeader(R.layout.header_apps)
+        diagView = inflateHeader(R.layout.diag_view)
+        diagView.findViewById<View>(R.id.diagRerun).setOnClickListener { runDiagnostic() }
+        val homeTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header))
+        val appsTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(appsHeader), adapter)
+        val diagTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(diagView))
+        list = findViewById(R.id.list)
+        list.layoutManager = LinearLayoutManager(this)
+        list.adapter = homeTab
+        tabs = findViewById(R.id.tabs)
+        tabs.setOnItemSelectedListener { item ->
+            list.adapter = when (item.itemId) {
+                R.id.tab_apps -> appsTab
+                R.id.tab_diag -> { runDiagnostic(); diagTab }
+                else -> homeTab
+            }
+            list.scheduleLayoutAnimation()
+            true
         }
 
         btnCreate.setOnClickListener {
@@ -107,9 +125,9 @@ class MainActivity : AppCompatActivity() {
         swDefault.setOnCheckedChangeListener { _, on -> setDefaultMode(on) }
         btnShizuku.setOnClickListener { onShizukuButton() }
         btnHome.setOnClickListener { chooseHome() }
-        header.findViewById<com.google.android.material.chip.Chip>(R.id.chipSystem)
+        appsHeader.findViewById<com.google.android.material.chip.Chip>(R.id.chipSystem)
             .setOnCheckedChangeListener { _, c -> showSystem = c; refresh() }
-        header.findViewById<com.google.android.material.chip.Chip>(R.id.chipRemoved)
+        appsHeader.findViewById<com.google.android.material.chip.Chip>(R.id.chipRemoved)
             .setOnCheckedChangeListener { _, c -> showRemoved = c; refresh() }
 
         Updater.check(this)
@@ -377,12 +395,113 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Divers ----------
 
+    private fun inflateHeader(layout: Int): View = layoutInflater.inflate(layout, null, false).apply {
+        layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT)
+    }
+
+    /** Le canal vers l'espace isolé fonctionne-t-il ? (filtres inter-profils enregistrés) */
+    private fun channelOk() = packageManager.queryIntentActivities(Intent(Iso.ACTION_OPEN_MANAGER), 0).isNotEmpty()
+
     private fun crossProfile(action: String) {
         try {
             startActivity(Intent(action))
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "Espace isolé indisponible (en pause ?)", Toast.LENGTH_LONG).show()
+            val p = Iso.isolatedProfile(this)
+            val paused = p != null && runCatching {
+                getSystemService(android.os.UserManager::class.java).isQuietModeEnabled(p)
+            }.getOrDefault(false)
+            when {
+                p == null -> Toast.makeText(this, "Crée d'abord l'espace isolé", Toast.LENGTH_LONG).show()
+                paused -> { Toast.makeText(this, "L'espace isolé est en pause : je le réactive", Toast.LENGTH_SHORT).show(); resume(p) }
+                else -> repairChannel { ok -> if (ok) crossProfile(action) }
+            }
         }
+    }
+
+    /**
+     * Répare le canal : via Shizuku, ouvre directement l'espace isolé, qui se reconfigure
+     * (ProvisionedActivity → ensureIsolatedSetup réenregistre les filtres et réactive les composants).
+     */
+    private fun repairChannel(done: (Boolean) -> Unit = {}) {
+        val user = Iso.isolatedUserId(this)
+        if (user == null || !Shell.granted()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Liaison avec l'espace isolé cassée")
+                .setMessage("Pour la réparer automatiquement, active Shizuku (carte « Super-pouvoirs »), puis réessaie. Sinon : supprime et recrée l'espace isolé.")
+                .setPositiveButton("OK", null).show()
+            done(false); return
+        }
+        Toast.makeText(this, "Réparation en cours…", Toast.LENGTH_SHORT).show()
+        Thread {
+            Shell.run("am start --user $user -n $packageName/${ProvisionedActivity::class.java.name}")
+            Thread.sleep(2500)
+            val ok = channelOk()
+            runOnUiThread {
+                Toast.makeText(this, if (ok) "Réparé ✓" else "Réparation impossible : recrée l'espace isolé", Toast.LENGTH_LONG).show()
+                refresh(); if (::diagView.isInitialized && list.adapter?.itemCount == 1 && tabs.selectedItemId == R.id.tab_diag) runDiagnostic()
+                done(ok)
+            }
+        }.start()
+    }
+
+    // ---------- Diagnostic ----------
+
+    private data class Check(val ok: Boolean?, val title: String, val text: String, val fix: (() -> Unit)? = null)
+
+    private fun runDiagnostic() {
+        val p = Iso.isolatedProfile(this)
+        val um = getSystemService(android.os.UserManager::class.java)
+        val paused = p != null && runCatching { um.isQuietModeEnabled(p) }.getOrDefault(false)
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        val xiaomi = Build.MANUFACTURER.equals("xiaomi", true) || Build.BRAND.equals("redmi", true) || Build.BRAND.equals("poco", true)
+        val notifOk = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        val checks = buildList {
+            add(Check(p != null, "Espace isolé", if (p != null) "Créé" else "Pas encore créé", if (p == null) ({ createSpace() }) else null))
+            if (p != null) {
+                add(Check(!paused, "Espace allumé", if (paused) "En pause : les applis isolées sont arrêtées" else "Allumé", if (paused) ({ resume(p) }) else null))
+                val ch = channelOk()
+                add(Check(ch, "Liaison avec l'espace", if (ch) "Fonctionne" else "Cassée : les boutons « Mes applis isolées » et « Play Store » ne marchent pas", if (!ch) ({ repairChannel() }) else null))
+            }
+            add(Check(if (Shell.granted()) true else null, "Shizuku (optionnel)", getString(when {
+                !Shell.installed(this@MainActivity) -> R.string.shizuku_off
+                !Shell.running() -> R.string.shizuku_stopped
+                !Shell.granted() -> R.string.shizuku_need_perm
+                else -> R.string.shizuku_ok
+            }), if (!Shell.granted()) ({ onShizukuButton() }) else null))
+            if (Prefs.monitor(this@MainActivity)) {
+                add(Check(notifOk, "Notifications", if (notifOk) "Autorisées" else "Bloquées : tu ne seras pas prévenu des nouvelles applis",
+                    if (!notifOk) ({ notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }) else null))
+            }
+            val battOk = pm.isIgnoringBatteryOptimizations(packageName)
+            add(Check(battOk, "Batterie", if (battOk) "Pas de restriction" else "Restreinte : Android peut mettre l'espace en pause ou couper la surveillance",
+                if (!battOk) ({ openIntent(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }) else null))
+            if (xiaomi) add(Check(null, "Démarrage auto (Xiaomi)", "Xiaomi bloque les applis au démarrage. Autorise Isolateur dans « Démarrage automatique ».") {
+                openIntent(Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"))
+            })
+            add(Check(if (isDefaultHome()) true else null, "Écran d'accueil (optionnel)", if (isDefaultHome()) "Isolateur cache l'onglet Travail" else "Lanceur du téléphone : l'onglet Travail et les 💼 restent visibles",
+                if (!isDefaultHome()) ({ chooseHome() }) else null))
+        }
+        val box = diagView.findViewById<LinearLayout>(R.id.diagRows)
+        box.removeAllViews()
+        for (c in checks) {
+            val row = layoutInflater.inflate(R.layout.item_diag, box, false)
+            row.findViewById<TextView>(R.id.dIcon).text = when (c.ok) { true -> "✅"; false -> "❌"; null -> "💡" }
+            row.findViewById<TextView>(R.id.dTitle).text = c.title
+            row.findViewById<TextView>(R.id.dText).text = c.text
+            row.findViewById<MaterialButton>(R.id.dFix).apply {
+                visibility = if (c.fix != null) View.VISIBLE else View.GONE
+                text = if (c.ok == false) "Réparer" else "Régler"
+                setOnClickListener { c.fix?.invoke() }
+            }
+            box.addView(row)
+        }
+        val problems = checks.count { it.ok == false }
+        diagView.findViewById<TextView>(R.id.diagSummary).text =
+            if (problems == 0) "✅ Aucun problème détecté" else "❌ $problems problème(s) détecté(s) : appuie sur « Réparer »"
+    }
+
+    private fun openIntent(i: Intent) = runCatching { startActivity(i) }.onFailure {
+        runCatching { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
     }
 
     /** Xiaomi : force les gestes plein écran même avec un lanceur tiers (réglage caché, via Shizuku). */
@@ -465,7 +584,7 @@ class MainActivity : AppCompatActivity() {
     private val guide = listOf(
         "C'est quoi ?" to "Isolateur crée un « espace isolé » dans ton téléphone : un coffre où tes applis vivent à part, avec leurs propres données. Elles ne voient pas le reste du téléphone.",
         "Étape 1 : créer l'espace" to "Appuie sur « Créer l'espace isolé » et suis les écrans d'Android jusqu'au bout. C'est à faire une seule fois.",
-        "Étape 2 : mettre des applis dedans" to "Dans la liste en bas, appuie sur « Mettre à l'abri » à côté d'une appli. Ou installe-la directement avec le bouton « Play Store » : elle ira dans l'espace isolé.",
+        "Étape 2 : mettre des applis dedans" to "Dans l'onglet « Applis », appuie sur « Mettre à l'abri » à côté d'une appli. Ou installe-la directement avec le bouton « Play Store » : elle ira dans l'espace isolé.",
         "Étape 3 : empêcher une appli de se lancer seule" to "Ouvre « Mes applis isolées » et éteins l'interrupteur de l'appli. Elle dort : plus rien en fond, plus de notification. « Ouvrir » la réveille.",
         "Optionnel : cacher l'isolation" to "Sur la carte « Cacher l'onglet Travail », appuie sur « Activer » : ton écran d'accueil mélange toutes les applis, sans 💼.",
         "Optionnel : super-pouvoirs" to "L'appli gratuite Shizuku permet de supprimer les applis système et d'isoler sans confirmation. Pas obligatoire.",
@@ -494,7 +613,8 @@ class MainActivity : AppCompatActivity() {
                 Iso.isolatedProfile(this)?.let { resume(it) } ?: createSpace()
             },
             Triple(hasIsolatedApp(), "Mettre une appli à l'abri") {
-                Toast.makeText(this, "Appuie sur « Mettre à l'abri » dans la liste en bas", Toast.LENGTH_LONG).show()
+                tabs.selectedItemId = R.id.tab_apps
+                Toast.makeText(this, "Appuie sur « Mettre à l'abri » à côté d'une appli", Toast.LENGTH_LONG).show()
             },
             Triple(isHome, "Cacher l'onglet Travail (optionnel)") { chooseHome() },
             Triple(Shell.granted(), "Super-pouvoirs Shizuku (optionnel)") { onShizukuButton() },

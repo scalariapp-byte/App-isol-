@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/tab_home" android:icon="@drawable/ic_home" android:title="Accueil" />
+    <item android:id="@+id/tab_apps" android:icon="@drawable/ic_apps" android:title="Applis" />
+    <item android:id="@+id/tab_diag" android:icon="@drawable/ic_diag" android:title="Diagnostic" />
+</menu>
