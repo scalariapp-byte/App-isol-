@@ -40,6 +40,25 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Écran d'accueil : toutes les applis mélangées, sans badge ni onglet « Travail » -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:resumeWhilePausing="true"
+            android:stateNotNeeded="true"
+            android:theme="@style/Theme.Isolateur.Home"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Gestionnaire des applis de l'espace isolé (s'exécute dans le profil isolé) -->
         <activity
             android:name=".IsolatedActivity"

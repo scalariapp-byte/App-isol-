@@ -84,6 +84,7 @@ object Iso {
         set(WorkActionActivity::class.java.name, iso)
         // Discrétion : pas d'icône Isolateur dans l'espace isolé ; on le gère depuis le côté personnel.
         set("${ctx.packageName}.Launcher", !iso)
+        set(HomeActivity::class.java.name, !iso)
     }
 }
 

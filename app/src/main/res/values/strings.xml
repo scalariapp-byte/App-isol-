@@ -36,4 +36,6 @@
     <string name="shizuku_get">Installer Shizuku</string>
     <string name="shizuku_open">Ouvrir Shizuku</string>
     <string name="shizuku_grant">Autoriser</string>
+    <string name="use_home">Utiliser l\'écran d\'accueil Isolateur (applis mélangées, sans badge)</string>
+    <string name="search">Rechercher</string>
 </resources>

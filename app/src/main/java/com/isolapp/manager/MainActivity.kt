@@ -81,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         swAuto.setOnCheckedChangeListener { _, on -> setAuto(on) }
         swDefault.setOnCheckedChangeListener { _, on -> setDefaultMode(on) }
         btnShizuku.setOnClickListener { onShizukuButton() }
+        findViewById<MaterialButton>(R.id.btnHome).setOnClickListener { chooseHome() }
 
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
@@ -104,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         val has = profile != null
         status.setText(if (has) R.string.space_ok else R.string.no_space)
         btnCreate.visibility = if (has) View.GONE else View.VISIBLE
-        listOf(rowButtons, swAuto, swDefault).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
+        listOf(rowButtons, findViewById<View>(R.id.btnHome), swAuto, swDefault).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
         setChecked(swAuto, Prefs.monitor(this))
         setChecked(swDefault, Prefs.defaultMode(this))
         refreshShizuku()
@@ -332,6 +333,23 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(action))
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(this, "Espace isolé indisponible (en pause ?)", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Propose Isolateur comme écran d'accueil par défaut. */
+    private fun chooseHome() {
+        val intent = if (Build.VERSION.SDK_INT >= 29) {
+            val rm = getSystemService(android.app.role.RoleManager::class.java)
+            if (rm.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                Toast.makeText(this, "Déjà ton écran d'accueil", Toast.LENGTH_SHORT).show()
+                return
+            }
+            rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME)
+        } else {
+            Intent(Settings.ACTION_HOME_SETTINGS)
+        }
+        runCatching { startActivity(intent) }.onFailure {
+            runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
         }
     }
 

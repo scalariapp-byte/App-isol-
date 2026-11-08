@@ -40,8 +40,15 @@ Google…) sont protégées contre la suppression.
 - Aucune icône Isolateur dans l'espace isolé ; tout se gère depuis le côté personnel.
 - Notifications de service en priorité minimale et masquées sur l'écran de verrouillage
   (sur Android 13+ on peut les balayer ; on peut aussi couper leur canal dans les réglages de l'appli).
-- **Restent visibles, car imposés par Android** : le badge 💼 sur les icônes isolées, l'onglet
-  « Travail » du lanceur et la mention « profil professionnel » dans les Paramètres.
+- **Écran d'accueil Isolateur** (bouton « Utiliser l'écran d'accueil Isolateur ») : toutes les applis,
+  personnelles et isolées, dans une seule grille triée par nom, avec leurs icônes **sans badge** et
+  **sans onglet « Travail »**. Rien n'y distingue une appli isolée. Recherche en haut, appui long =
+  infos / désinstaller, roue dentée = réglages Isolateur. Une appli présente des deux côtés n'apparaît
+  qu'une fois.
+- **Restent visibles, car dessinés par Android lui-même** : petit badge 💼 sur les notifications et
+  dans l'écran des applis récentes, mention « profil professionnel » dans les Paramètres.
+- Les applis gelées (démarrage auto bloqué) n'apparaissent pas sur l'écran d'accueil tant qu'elles
+  sont gelées : on les lance depuis « Gérer l'espace isolé ».
 
 ## Utilisation
 

@@ -49,6 +49,13 @@
                 android:text="Play Store isolé" />
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHome"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/use_home" />
+
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/swAuto"
             android:layout_width="match_parent"
