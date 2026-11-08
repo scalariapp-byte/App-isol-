@@ -2,36 +2,73 @@ name: Build APK
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      # Le SDK Android est préinstallé sur ubuntu-latest (ANDROID_HOME).
-      - name: Build debug APK
+
+      - name: Vérifier le secret de signature
+        run: |
+          if [ -z "$SIGNING_PASSWORD" ]; then
+            echo "::error::Ajoute le secret SIGNING_PASSWORD (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      # La clé est créée une seule fois, puis stockée CHIFFRÉE dans le dépôt (signing/release.jks.enc).
+      - name: Préparer la clé de signature
+        run: |
+          mkdir -p signing
+          if [ ! -f signing/release.jks.enc ]; then
+            keytool -genkeypair -v -keystore signing/release.jks -alias isolateur \
+              -keyalg RSA -keysize 4096 -validity 36500 \
+              -storepass "$SIGNING_PASSWORD" -keypass "$SIGNING_PASSWORD" \
+              -dname "CN=Isolateur"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+              -in signing/release.jks -out signing/release.jks.enc -pass env:SIGNING_PASSWORD
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add signing/release.jks.enc
+            git commit -m "Clé de signature chiffrée"
+            git push
+          else
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+              -in signing/release.jks.enc -out signing/release.jks -pass env:SIGNING_PASSWORD
+          fi
+
+      - name: Build APK signé
+        env:
+          SIGNING_STORE_FILE: ${{ github.workspace }}/signing/release.jks
+          VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk Isolateur.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: isolateur-debug-apk
-          path: Isolateur.apk
-      - name: Publier l'APK (release "latest")
-        if: github.event_name != 'pull_request'
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk Isolateur.apk
+          rm -f signing/release.jks
+
+      - name: Publier (release "latest")
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Isolateur (dernière version)
-          prerelease: true
+          name: Isolateur v${{ github.run_number }}
+          body: |
+            Dernière version d'Isolateur.
+            versionCode=${{ github.run_number }}
+          prerelease: false
+          make_latest: true
           files: Isolateur.apk

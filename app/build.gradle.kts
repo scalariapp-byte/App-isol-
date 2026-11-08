@@ -11,13 +11,29 @@ android {
         applicationId = "com.isolapp.manager"
         minSdk = 28
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        val code = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionCode = 100 + code
+        versionName = "1.$code"
+    }
+
+    signingConfigs {
+        create("release") {
+            val store = System.getenv("SIGNING_STORE_FILE")
+            if (store != null) {
+                storeFile = file(store)
+                storePassword = System.getenv("SIGNING_PASSWORD")
+                keyAlias = "isolateur"
+                keyPassword = System.getenv("SIGNING_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (System.getenv("SIGNING_STORE_FILE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

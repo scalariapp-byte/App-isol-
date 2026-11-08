@@ -105,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         header.findViewById<com.google.android.material.chip.Chip>(R.id.chipRemoved)
             .setOnCheckedChangeListener { _, c -> showRemoved = c; refresh() }
 
+        Updater.check(this)
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
     }
