@@ -73,6 +73,15 @@ Google…) sont protégées contre la suppression.
 
 Android 9 (API 28) minimum.
 
+## Tout désinstaller
+
+Isolateur est installé deux fois : côté personnel et dans l'espace isolé, dont il est
+l'administrateur. Désinstaller la copie personnelle ne suffit pas. Utiliser le menu
+**⋮ → Supprimer l'espace isolé et désinstaller Isolateur** : il réactive le Play Store personnel,
+supprime l'espace (avec toutes ses applis et données) puis propose la désinstallation.
+
+À la main : Paramètres → Comptes → Profil professionnel → Supprimer le profil professionnel.
+
 ## Compilation
 
 ```bash

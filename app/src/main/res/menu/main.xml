@@ -3,4 +3,5 @@
     <item android:id="@+id/m_install" android:title="@string/install_apk" />
     <item android:id="@+id/m_system" android:title="@string/show_system" android:checkable="true" />
     <item android:id="@+id/m_removed" android:title="@string/show_removed" android:checkable="true" />
+    <item android:id="@+id/m_remove_space" android:title="@string/remove_space" />
 </menu>

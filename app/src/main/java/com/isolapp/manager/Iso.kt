@@ -16,6 +16,7 @@ object Iso {
     const val ACTION_INSTALL_APK = "com.isolapp.manager.action.INSTALL_APK"
     const val ACTION_OPEN_MANAGER = "com.isolapp.manager.action.OPEN_MANAGER"
     const val ACTION_OPEN_STORE = "com.isolapp.manager.action.OPEN_STORE"
+    const val ACTION_REMOVE_SPACE = "com.isolapp.manager.action.REMOVE_SPACE"
     const val PLAY_STORE = "com.android.vending"
 
     /** Paquets nécessaires au Play Store dans l'espace isolé. */
@@ -53,6 +54,7 @@ object Iso {
                 addAction(ACTION_INSTALL_APK)
                 addAction(ACTION_OPEN_MANAGER)
                 addAction(ACTION_OPEN_STORE)
+                addAction(ACTION_REMOVE_SPACE)
                 addCategory(Intent.CATEGORY_DEFAULT)
             }
             dpm.addCrossProfileIntentFilter(admin, filter, DevicePolicyManager.FLAG_PARENT_CAN_ACCESS_MANAGED)
@@ -103,6 +105,8 @@ object Prefs {
         sp(ctx).edit().putStringSet("removed", s).apply()
     }
     fun setMonitor(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("monitor", v).apply()
+    fun pendingUninstall(ctx: Context) = sp(ctx).getBoolean("pending_uninstall", false)
+    fun setPendingUninstall(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("pending_uninstall", v).apply()
 
     /** Applis isolées dont le démarrage automatique est bloqué (gardées gelées). */
     fun blocked(ctx: Context): Set<String> = HashSet(sp(ctx).getStringSet("blocked", emptySet()) ?: emptySet())

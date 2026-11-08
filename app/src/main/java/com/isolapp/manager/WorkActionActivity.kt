@@ -36,6 +36,13 @@ class WorkActionActivity : Activity() {
                 startActivity(Intent(this, IsolatedActivity::class.java))
                 finish()
             }
+            Iso.ACTION_REMOVE_SPACE -> {
+                // Supprime tout le profil isolé (applis + données). Confirmé au préalable côté personnel.
+                runCatching { Iso.dpm(this).wipeData(0) }.onFailure {
+                    Toast.makeText(this, "Échec : ${it.message}", Toast.LENGTH_LONG).show()
+                }
+                finish()
+            }
             Iso.ACTION_OPEN_STORE -> {
                 Iso.ensureIsolatedSetup(this)
                 val i = packageManager.getLaunchIntentForPackage(Iso.PLAY_STORE)

@@ -38,4 +38,5 @@
     <string name="shizuku_grant">Autoriser</string>
     <string name="use_home">Utiliser l\'écran d\'accueil Isolateur (applis mélangées, sans badge)</string>
     <string name="search">Rechercher</string>
+    <string name="remove_space">Supprimer l\'espace isolé et désinstaller Isolateur…</string>
 </resources>

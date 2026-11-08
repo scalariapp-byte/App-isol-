@@ -103,6 +103,11 @@ class MainActivity : AppCompatActivity() {
     private fun refresh() {
         val profile = Iso.isolatedProfile(this)
         val has = profile != null
+        if (!has && Prefs.pendingUninstall(this)) {
+            // Espace supprimé : on termine par la désinstallation d'Isolateur lui-même.
+            Prefs.setPendingUninstall(this, false)
+            runCatching { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))) }
+        }
         status.setText(if (has) R.string.space_ok else R.string.no_space)
         btnCreate.visibility = if (has) View.GONE else View.VISIBLE
         listOf(rowButtons, findViewById<View>(R.id.btnHome), swAuto, swDefault).forEach { it.visibility = if (has) View.VISIBLE else View.GONE }
@@ -336,6 +341,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun confirmRemoveSpace() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Tout supprimer ?")
+            .setMessage(
+                "L'espace isolé sera supprimé avec TOUTES ses applis et leurs données (comptes, photos, " +
+                    "messages qui s'y trouvent). C'est irréversible.\n\n" +
+                    "Le Play Store personnel sera réactivé, puis Isolateur te proposera de se désinstaller."
+            )
+            .setPositiveButton("Tout supprimer") { _, _ -> removeSpace() }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun removeSpace() {
+        // On rend le téléphone dans son état normal avant de partir.
+        if (Prefs.defaultMode(this) && Shell.granted()) Shell.setEnabled(Iso.PLAY_STORE, 0, true)
+        Prefs.setDefaultMode(this, false)
+        Prefs.setMonitor(this, false)
+        MonitorService.stop(this)
+        Prefs.setPendingUninstall(this, true)
+        try {
+            startActivity(Intent(Iso.ACTION_REMOVE_SPACE))
+        } catch (e: ActivityNotFoundException) {
+            Prefs.setPendingUninstall(this, false)
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Suppression manuelle")
+                .setMessage(
+                    "Va dans Paramètres → Comptes (ou « Utilisateurs et comptes ») → Profil professionnel → " +
+                        "« Supprimer le profil professionnel ». Désinstalle ensuite Isolateur."
+                )
+                .setPositiveButton("Ouvrir les Paramètres") { _, _ ->
+                    runCatching { startActivity(Intent(Settings.ACTION_SYNC_SETTINGS)) }
+                }
+                .setNegativeButton("Fermer", null)
+                .show()
+        }
+    }
+
     /** Propose Isolateur comme écran d'accueil par défaut. */
     private fun chooseHome() {
         val intent = if (Build.VERSION.SDK_INT >= 29) {
@@ -385,6 +428,7 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.m_install -> crossProfile(Iso.ACTION_INSTALL_APK)
+            R.id.m_remove_space -> confirmRemoveSpace()
             R.id.m_system -> { showSystem = !showSystem; item.isChecked = showSystem; refresh() }
             R.id.m_removed -> { showRemoved = !showRemoved; item.isChecked = showRemoved; refresh() }
             else -> return super.onOptionsItemSelected(item)

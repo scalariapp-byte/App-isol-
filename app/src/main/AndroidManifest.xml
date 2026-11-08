@@ -76,6 +76,7 @@
                 <action android:name="com.isolapp.manager.action.INSTALL_APK" />
                 <action android:name="com.isolapp.manager.action.OPEN_MANAGER" />
                 <action android:name="com.isolapp.manager.action.OPEN_STORE" />
+                <action android:name="com.isolapp.manager.action.REMOVE_SPACE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
