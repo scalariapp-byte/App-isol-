@@ -13,6 +13,13 @@
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Permission accordée par l'utilisateur aux applis autorisées à piloter Isolateur (ex. gestionnaire de fichiers) -->
+    <permission
+        android:name="com.isolapp.manager.permission.CONTROL"
+        android:description="@string/perm_control_desc"
+        android:label="@string/perm_control_label"
+        android:protectionLevel="dangerous" />
+
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
     </queries>
@@ -79,6 +86,19 @@
                 <action android:name="com.isolapp.manager.action.OPEN_MANAGER" />
                 <action android:name="com.isolapp.manager.action.OPEN_STORE" />
                 <action android:name="com.isolapp.manager.action.REMOVE_SPACE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- API pour d'autres applis : bloquer/autoriser le démarrage auto d'une appli (via Shizuku) -->
+        <activity
+            android:name=".RemoteControlActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:permission="com.isolapp.manager.permission.CONTROL"
+            android:theme="@style/Theme.Isolateur.Transparent">
+            <intent-filter>
+                <action android:name="com.isolapp.manager.action.SET_BOOT" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

@@ -39,4 +39,6 @@
     <string name="use_home">Utiliser l\'écran d\'accueil Isolateur (applis mélangées, sans badge)</string>
     <string name="search">Rechercher</string>
     <string name="remove_space">Supprimer l\'espace isolé et désinstaller Isolateur…</string>
+    <string name="perm_control_label">bloquer le démarrage des applis via Isolateur</string>
+    <string name="perm_control_desc">Permet à cette appli de demander à Isolateur d\'empêcher ou d\'autoriser le lancement d\'autres applis au démarrage du téléphone.</string>
 </resources>

@@ -50,6 +50,13 @@ object Shell {
 
     fun installExisting(pkg: String, user: Int) = valid(pkg) && ok("pm install-existing --user $user $pkg")
 
+    private val CLS_RE = Regex("^[A-Za-z0-9_.$]+$")
+
+    /** Active/désactive un composant précis (ex. récepteur de démarrage) d'une appli. */
+    fun setComponentEnabled(pkg: String, cls: String, user: Int, enabled: Boolean) =
+        valid(pkg) && CLS_RE.matches(cls) &&
+            ok("pm ${if (enabled) "enable" else "disable"} --user $user '$pkg/$cls'")
+
     fun setEnabled(pkg: String, user: Int, enabled: Boolean) =
         valid(pkg) && ok(if (enabled) "pm enable --user $user $pkg" else "pm disable-user --user $user $pkg")
 }
