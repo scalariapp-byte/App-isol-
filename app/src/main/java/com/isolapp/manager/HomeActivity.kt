@@ -75,6 +75,9 @@ class HomeActivity : AppCompatActivity() {
     private var all: List<Entry> = emptyList()
     private var byKey: Map<String, Entry> = emptyMap()
     private var drawerOpen = false
+    private lateinit var widgetHost: android.appwidget.AppWidgetHost
+    private lateinit var widgetManager: android.appwidget.AppWidgetManager
+    private var pendingWidgetId = -1
 
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) = reload()
@@ -148,6 +151,10 @@ class HomeActivity : AppCompatActivity() {
             override fun handleOnBackPressed() { if (drawerOpen) closeDrawer() }
         })
 
+        widgetManager = android.appwidget.AppWidgetManager.getInstance(this)
+        widgetHost = android.appwidget.AppWidgetHost(this, WIDGET_HOST_ID)
+        renderWidgets()
+
         drawer.post { drawer.translationY = drawer.height.toFloat() }
         launcherApps.registerCallback(callback, Handler(Looper.getMainLooper()))
         reload()
@@ -156,6 +163,83 @@ class HomeActivity : AppCompatActivity() {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         gestures.onTouchEvent(ev)
         return super.dispatchTouchEvent(ev)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        runCatching { widgetHost.startListening() }
+    }
+
+    override fun onStop() {
+        runCatching { widgetHost.stopListening() }
+        super.onStop()
+    }
+
+    // ---------- Widgets ----------
+
+    private fun pickWidget() {
+        pendingWidgetId = widgetHost.allocateAppWidgetId()
+        val i = Intent(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_PICK)
+            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId)
+        runCatching { startActivityForResult(i, REQ_PICK_WIDGET) }.onFailure {
+            widgetHost.deleteAppWidgetId(pendingWidgetId)
+            Toast.makeText(this, "Sélecteur de widgets indisponible", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val id = data?.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId)
+            ?: pendingWidgetId
+        if (resultCode != RESULT_OK) {
+            if (id != -1) widgetHost.deleteAppWidgetId(id)
+            return
+        }
+        when (requestCode) {
+            REQ_PICK_WIDGET -> {
+                val info = widgetManager.getAppWidgetInfo(id) ?: return
+                if (info.configure != null) {
+                    runCatching {
+                        widgetHost.startAppWidgetConfigureActivityForResult(this, id, 0, REQ_CONFIG_WIDGET, null)
+                    }.onFailure { addWidget(id) }
+                } else addWidget(id)
+            }
+            REQ_CONFIG_WIDGET -> addWidget(id)
+        }
+    }
+
+    private fun addWidget(id: Int) {
+        Prefs.setWidgets(this, Prefs.widgets(this) + id)
+        renderWidgets()
+    }
+
+    private fun renderWidgets() {
+        val box = findViewById<LinearLayout>(R.id.widgets)
+        box.removeAllViews()
+        val d = resources.displayMetrics.density
+        for (id in Prefs.widgets(this)) {
+            val info = widgetManager.getAppWidgetInfo(id) ?: continue
+            val v = widgetHost.createView(applicationContext, id, info)
+            val h = (maxOf(info.minHeight, 60) * if (info.minHeight > 400) 1f else d).toInt()
+            box.addView(v, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h).apply {
+                bottomMargin = (8 * d).toInt()
+            })
+        }
+    }
+
+    private fun removeWidgetDialog() {
+        val ids = Prefs.widgets(this)
+        if (ids.isEmpty()) return
+        val names = ids.map { widgetManager.getAppWidgetInfo(it)?.loadLabel(packageManager) ?: "Widget" }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Retirer un widget")
+            .setItems(names.toTypedArray()) { _, i ->
+                widgetHost.deleteAppWidgetId(ids[i])
+                Prefs.setWidgets(this, ids - ids[i])
+                renderWidgets()
+            }
+            .show()
     }
 
     override fun onDestroy() {
@@ -351,14 +435,18 @@ class HomeActivity : AppCompatActivity() {
             override fun onLongPress(ev: MotionEvent) {
                 if (homeGrid.findChildViewUnder(ev.x, ev.y) != null) return
                 PopupMenu(this@HomeActivity, homeGrid, android.view.Gravity.CENTER).apply {
-                    menu.add(0, 1, 0, "Fond d'écran")
-                    menu.add(0, 2, 1, "Réglages de l'écran d'accueil")
+                    menu.add(0, 3, 0, "Ajouter un widget")
+                    if (Prefs.widgets(this@HomeActivity).isNotEmpty()) menu.add(0, 4, 1, "Retirer un widget")
+                    menu.add(0, 1, 2, "Fond d'écran")
+                    menu.add(0, 2, 3, "Réglages de l'écran d'accueil")
                     setOnMenuItemClickListener {
                         when (it.itemId) {
                             1 -> runCatching {
                                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Fond d'écran"))
                             }
                             2 -> startActivity(Intent(this@HomeActivity, MainActivity::class.java))
+                            3 -> pickWidget()
+                            4 -> removeWidgetDialog()
                         }
                         true
                     }
@@ -425,5 +513,8 @@ class HomeActivity : AppCompatActivity() {
 
     companion object {
         private const val DOCK_MAX = 5
+        private const val WIDGET_HOST_ID = 1024
+        private const val REQ_PICK_WIDGET = 1
+        private const val REQ_CONFIG_WIDGET = 2
     }
 }

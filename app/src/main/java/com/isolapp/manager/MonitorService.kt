@@ -25,7 +25,7 @@ class MonitorService : Service() {
         override fun onReceive(c: Context, i: Intent) {
             if (i.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
             val pkg = i.data?.schemeSpecificPart ?: return
-            if (pkg == packageName) return
+            if (pkg == packageName || pkg in Mover.NEVER_MOVE) return
             if (Shell.granted()) {
                 // Mode automatique : déplacement silencieux, sans notification.
                 Thread { if (!Mover.silentIsolate(c, pkg)) notifyNewApp(c, pkg) }.start()

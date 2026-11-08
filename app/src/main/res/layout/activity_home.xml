@@ -58,6 +58,14 @@
                 android:textSize="17sp" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/widgets"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="12dp" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/homeGrid"
             android:layout_width="match_parent"

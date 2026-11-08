@@ -115,6 +115,9 @@ object Prefs {
     private fun setList(ctx: Context, k: String, v: List<String>) =
         sp(ctx).edit().putString(k, v.joinToString("\n")).apply()
 
+    fun widgets(ctx: Context): List<Int> = list(ctx, "widgets")?.mapNotNull { it.toIntOrNull() } ?: emptyList()
+    fun setWidgets(ctx: Context, v: List<Int>) = setList(ctx, "widgets", v.map { it.toString() })
+
     fun pendingUninstall(ctx: Context) = sp(ctx).getBoolean("pending_uninstall", false)
     fun setPendingUninstall(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("pending_uninstall", v).apply()
 

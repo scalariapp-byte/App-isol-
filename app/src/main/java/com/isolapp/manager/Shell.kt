@@ -94,7 +94,10 @@ object Critical {
 
 /** Déplacement d'une appli personnelle vers l'espace isolé. */
 object Mover {
-    private val NEVER_MOVE = setOf(Shell.SHIZUKU_PKG)
+    // Gemini et l'appli Google refusent de fonctionner dans un profil professionnel.
+    val NEVER_MOVE = setOf(
+        Shell.SHIZUKU_PKG, "com.google.android.apps.bard", "com.google.android.googlequicksearchbox",
+    )
 
     /** Sans aucune confirmation (Shizuku requis) : copie dans l'espace puis suppression côté personnel. */
     fun silentIsolate(ctx: Context, pkg: String): Boolean {
