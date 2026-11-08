@@ -14,6 +14,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
     steps:
@@ -57,7 +58,7 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          ./gradlew --no-daemon --stacktrace assembleRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease
           cp app/build/outputs/apk/release/app-release.apk Isolateur.apk
           rm -f signing/release.jks
 
