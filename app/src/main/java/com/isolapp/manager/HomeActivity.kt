@@ -221,7 +221,7 @@ class HomeActivity : AppCompatActivity() {
         for (id in Prefs.widgets(this)) {
             val info = widgetManager.getAppWidgetInfo(id) ?: continue
             val v = widgetHost.createView(applicationContext, id, info)
-            val h = (maxOf(info.minHeight, 60) * if (info.minHeight > 400) 1f else d).toInt()
+            val h = maxOf(info.minHeight, (60 * d).toInt()) // minHeight est déjà en pixels
             box.addView(v, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, h).apply {
                 bottomMargin = (8 * d).toInt()
             })
