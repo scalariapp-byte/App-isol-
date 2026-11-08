@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/m_help" android:title="Aide" android:icon="@drawable/ic_help" app:showAsAction="always" />
     <item android:id="@+id/m_install" android:title="@string/install_apk" />
     <item android:id="@+id/m_files" android:title="Gestionnaire de fichiers" />
     <item android:id="@+id/m_gestures" android:title="Gestes plein écran avec ce lanceur (Xiaomi)" />

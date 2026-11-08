@@ -6,6 +6,34 @@
     android:orientation="vertical"
     android:paddingHorizontal="16dp">
 
+    <!-- Étapes guidées -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardSteps"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="?attr/colorTertiaryContainer">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Par où commencer ? (touche une étape)"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnTertiaryContainer" />
+
+            <TextView android:id="@+id/step1" style="@style/StepRow" />
+            <TextView android:id="@+id/step2" style="@style/StepRow" />
+            <TextView android:id="@+id/step3" style="@style/StepRow" />
+            <TextView android:id="@+id/step4" style="@style/StepRow" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
     <!-- Carte principale -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardHero"
@@ -78,7 +106,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:text="Gérer" />
+                    android:text="Mes applis isolées" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnStore"
@@ -120,7 +148,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Écran d'accueil invisible"
+                        android:text="Cacher l'onglet Travail et les 💼"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -128,7 +156,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Toutes les applis ensemble, sans badge ni onglet Travail"
+                        android:text="Remplace ton écran d'accueil : toutes tes applis mélangées, personne ne voit lesquelles sont isolées."
                         android:textAppearance="?attr/textAppearanceBodySmall" />
                 </LinearLayout>
 
@@ -165,7 +193,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="56dp"
-                    android:text="Isoler automatiquement chaque nouvelle appli"
+                    android:text="Chaque appli que j'installe va toute seule dans l'espace isolé"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -173,7 +201,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="56dp"
-                    android:text="Mode par défaut : tout ce que tu télécharges va dans l'espace isolé"
+                    android:text="Le Play Store installe tout directement dans l'espace isolé"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -206,7 +234,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Mode avancé (Shizuku)"
+                        android:text="Super-pouvoirs (Shizuku)"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -237,7 +265,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Applications"
+                android:text="Mes applis (téléphone normal)"
                 android:textAppearance="?attr/textAppearanceTitleLarge" />
 
             <com.google.android.material.chip.ChipGroup

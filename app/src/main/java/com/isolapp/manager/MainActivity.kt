@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shizukuStatus: TextView
     private lateinit var shizukuDot: View
     private lateinit var btnShizuku: MaterialButton
+    private lateinit var cardSteps: View
+    private lateinit var steps: List<TextView>
     private lateinit var adapter: AppAdapter
 
     private var showSystem = false
@@ -86,6 +88,8 @@ class MainActivity : AppCompatActivity() {
         shizukuStatus = header.findViewById(R.id.shizukuStatus)
         shizukuDot = header.findViewById(R.id.shizukuDot)
         btnShizuku = header.findViewById(R.id.btnShizuku)
+        cardSteps = header.findViewById(R.id.cardSteps)
+        steps = listOf(R.id.step1, R.id.step2, R.id.step3, R.id.step4).map { header.findViewById(it) }
 
         adapter = AppAdapter(onAction = ::onAppAction, onMore = ::onAppMore)
         findViewById<RecyclerView>(R.id.list).apply {
@@ -109,6 +113,7 @@ class MainActivity : AppCompatActivity() {
             .setOnCheckedChangeListener { _, c -> showRemoved = c; refresh() }
 
         Updater.check(this)
+        if (!getSharedPreferences("iso", MODE_PRIVATE).getBoolean("guide_seen", false)) showGuide(0)
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
     }
@@ -149,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         setChecked(swAuto, Prefs.monitor(this))
         setChecked(swDefault, Prefs.defaultMode(this))
         refreshShizuku()
+        refreshSteps(has, paused, isHome)
         invalidateOptionsMenu()
         if (Prefs.monitor(this)) MonitorService.start(this)
         loadApps(profile)
@@ -454,6 +460,63 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---------- Aide ----------
+
+    private val guide = listOf(
+        "C'est quoi ?" to "Isolateur crée un « espace isolé » dans ton téléphone : un coffre où tes applis vivent à part, avec leurs propres données. Elles ne voient pas le reste du téléphone.",
+        "Étape 1 : créer l'espace" to "Appuie sur « Créer l'espace isolé » et suis les écrans d'Android jusqu'au bout. C'est à faire une seule fois.",
+        "Étape 2 : mettre des applis dedans" to "Dans la liste en bas, appuie sur « Mettre à l'abri » à côté d'une appli. Ou installe-la directement avec le bouton « Play Store » : elle ira dans l'espace isolé.",
+        "Étape 3 : empêcher une appli de se lancer seule" to "Ouvre « Mes applis isolées » et éteins l'interrupteur de l'appli. Elle dort : plus rien en fond, plus de notification. « Ouvrir » la réveille.",
+        "Optionnel : cacher l'isolation" to "Sur la carte « Cacher l'onglet Travail », appuie sur « Activer » : ton écran d'accueil mélange toutes les applis, sans 💼.",
+        "Optionnel : super-pouvoirs" to "L'appli gratuite Shizuku permet de supprimer les applis système et d'isoler sans confirmation. Pas obligatoire.",
+    )
+
+    private fun showGuide(i: Int) {
+        val (title, text) = guide[i]
+        MaterialAlertDialogBuilder(this)
+            .setTitle("${i + 1}/${guide.size} · $title")
+            .setMessage(text)
+            .setCancelable(false)
+            .setPositiveButton(if (i == guide.lastIndex) "J'ai compris" else "Suivant") { _, _ ->
+                if (i < guide.lastIndex) showGuide(i + 1)
+                else getSharedPreferences("iso", MODE_PRIVATE).edit().putBoolean("guide_seen", true).apply()
+            }
+            .setNegativeButton("Passer") { _, _ ->
+                getSharedPreferences("iso", MODE_PRIVATE).edit().putBoolean("guide_seen", true).apply()
+            }
+            .show()
+    }
+
+    /** Carte « Par où commencer » : chaque étape cochée quand elle est faite. */
+    private fun refreshSteps(has: Boolean, paused: Boolean, isHome: Boolean) {
+        val items = listOf(
+            Triple(has && !paused, if (paused) "Réactiver l'espace isolé" else "Créer l'espace isolé") {
+                Iso.isolatedProfile(this)?.let { resume(it) } ?: createSpace()
+            },
+            Triple(hasIsolatedApp(), "Mettre une appli à l'abri") {
+                Toast.makeText(this, "Appuie sur « Mettre à l'abri » dans la liste en bas", Toast.LENGTH_LONG).show()
+            },
+            Triple(isHome, "Cacher l'onglet Travail (optionnel)") { chooseHome() },
+            Triple(Shell.granted(), "Super-pouvoirs Shizuku (optionnel)") { onShizukuButton() },
+        )
+        items.forEachIndexed { i, (done, label, action) ->
+            steps[i].text = (if (done) "✅  " else "${i + 1}.  ") + label
+            steps[i].alpha = if (done) 0.6f else 1f
+            steps[i].setOnClickListener { if (has || i == 0) action() }
+        }
+        cardSteps.visibility = if (items.all { it.first }) View.GONE else View.VISIBLE
+    }
+
+    private fun hasIsolatedApp(): Boolean {
+        val p = Iso.isolatedProfile(this) ?: return false
+        return runCatching {
+            getSystemService(LauncherApps::class.java).getActivityList(null, p).any {
+                it.componentName.packageName != packageName &&
+                    (it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            }
+        }.getOrDefault(false)
+    }
+
     private fun isDefaultHome(): Boolean = runCatching {
         packageManager.resolveActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY
@@ -507,13 +570,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        if (Iso.isolatedProfile(this) == null) return false
         menuInflater.inflate(R.menu.main, menu)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.m_help -> showGuide(0)
             R.id.m_install -> crossProfile(Iso.ACTION_INSTALL_APK)
             R.id.m_remove_space -> confirmRemoveSpace()
             R.id.m_gestures -> xiaomiGestures()

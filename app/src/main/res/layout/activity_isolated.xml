@@ -43,7 +43,10 @@
                 android:id="@+id/hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Démarrage auto désactivé = l'appli reste gelée : elle ne démarre pas avec le téléphone, ne tourne pas en arrière-plan et n'envoie pas de notification. « Lancer » la dégèle jusqu'à l'extinction de l'écran."
+                android:text="Ici : les applis de ton espace isolé (séparées du reste du téléphone).
+
+• Interrupteur éteint = l'appli dort : elle ne se lance pas toute seule, ne tourne pas en fond et n'envoie pas de notification.
+• « Ouvrir » la réveille ; elle se rendort quand tu éteins l'écran."
                 android:textAppearance="?attr/textAppearanceBodySmall" />
         </com.google.android.material.card.MaterialCardView>
 
