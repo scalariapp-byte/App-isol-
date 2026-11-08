@@ -372,6 +372,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Xiaomi : force les gestes plein écran même avec un lanceur tiers (réglage caché, via Shizuku). */
+    private fun xiaomiGestures() {
+        if (!Shell.granted()) {
+            Toast.makeText(this, "Nécessite Shizuku actif", Toast.LENGTH_LONG).show(); return
+        }
+        val on = Shell.run("settings get global force_fsg_nav_bar").second.trim() == "1"
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Gestes plein écran")
+            .setMessage(
+                if (on) "Les gestes forcés sont actifs. Les désactiver ?"
+                else "Active les gestes plein écran avec l'écran d'accueil Isolateur. " +
+                    "L'animation de retour à l'accueil peut être moins fluide qu'avec le lanceur Xiaomi."
+            )
+            .setPositiveButton(if (on) "Désactiver" else "Activer") { _, _ ->
+                val v = if (on) 0 else 1
+                Shell.run("settings put global force_fsg_nav_bar $v")
+                Toast.makeText(
+                    this, if (on) "Gestes forcés désactivés" else "Activé : choisis « Gestes » dans Système de navigation",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
     private fun confirmRemoveSpace() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Tout supprimer ?")
@@ -472,6 +497,7 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.m_install -> crossProfile(Iso.ACTION_INSTALL_APK)
             R.id.m_remove_space -> confirmRemoveSpace()
+            R.id.m_gestures -> xiaomiGestures()
             else -> return super.onOptionsItemSelected(item)
         }
         return true
