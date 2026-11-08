@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Isolateur</string>
+    <string name="profile_name">Espace isolé</string>
+    <string name="isolated_title">Espace isolé</string>
+    <string name="no_space">Aucun espace isolé.\nCréez-le pour pouvoir y placer des applications. Elles y auront leurs propres données, comptes et fichiers, séparés du reste du téléphone.</string>
+    <string name="space_ok">Espace isolé actif.\nApplications personnelles ci-dessous : « Isoler » en place une copie dans l\'espace isolé.</string>
+    <string name="create_space">Créer l\'espace isolé</string>
+    <string name="open_manager">Gérer l\'espace isolé</string>
+    <string name="install_apk">Installer un APK dans l\'espace isolé</string>
+    <string name="monitor">Détecter les nouvelles installations et proposer de les isoler</string>
+    <string name="isolate">Isoler</string>
+    <string name="remove_personal">Retirer du perso</string>
+    <string name="launch">Lancer</string>
+    <string name="autostart">Démarrage auto</string>
+    <string name="show_system">Afficher les applis système</string>
+    <string name="freeze_all">Geler toutes les applis bloquées</string>
+    <string name="freeze">Geler</string>
+    <string name="unfreeze">Dégeler</string>
+    <string name="app_info">Infos de l\'application</string>
+    <string name="uninstall">Désinstaller de l\'espace isolé</string>
+    <string name="ch_monitor">Surveillance des installations</string>
+    <string name="ch_new_app">Nouvelles applications</string>
+    <string name="ch_freeze">Regel automatique</string>
+    <string name="ignore">Ignorer</string>
+</resources>
