@@ -402,13 +402,23 @@ class MainActivity : AppCompatActivity() {
 
     /** Le canal vers l'espace isolé fonctionne-t-il ? (filtres inter-profils enregistrés) */
     private fun filterChannelOk() = packageManager.queryIntentActivities(Intent(Iso.ACTION_OPEN_MANAGER), 0).isNotEmpty()
-    private fun channelOk() = filterChannelOk() || Iso.crossProfileAppsAllowed(this)
+    private fun channelOk() = filterChannelOk() || Iso.crossProfileAppsAllowed(this) ||
+        (Iso.isolatedUserId(this)?.let { Shell.canReachUser(it) } ?: false)
 
     private fun crossProfile(action: String) {
         try {
             startActivity(Intent(action))
         } catch (e: ActivityNotFoundException) {
             if (Iso.startViaCrossProfileApps(this, action)) return
+            // Canal Shizuku : fonctionne même quand Android ignore les filtres inter-profils.
+            val u = Iso.isolatedUserId(this)
+            if (u != null && Shell.granted()) {
+                Thread {
+                    val ok = Shell.canReachUser(u) && Shell.startInUser(u, WorkActionActivity::class.java.name, action)
+                    if (!ok) runOnUiThread { repairChannel() }
+                }.start()
+                return
+            }
             val p = Iso.isolatedProfile(this)
             val paused = p != null && runCatching {
                 getSystemService(android.os.UserManager::class.java).isQuietModeEnabled(p)
@@ -480,6 +490,12 @@ class MainActivity : AppCompatActivity() {
                 add(Check(!paused, "Espace allumé", if (paused) "En pause : les applis isolées sont arrêtées" else "Allumé", if (paused) ({ resume(p) }) else null))
                 val ch = channelOk()
                 add(Check(ch, "Liaison avec l'espace", if (ch) "Fonctionne" else "Cassée : les boutons « Mes applis isolées » et « Play Store » ne marchent pas", if (!ch) ({ repairChannel() }) else null))
+            }
+            if (p != null && Build.VERSION.SDK_INT >= 30 && !filterChannelOk() && !Iso.crossProfileAppsAllowed(this@MainActivity)) {
+                add(Check(null, "Liaison permanente", "Sans elle, la liaison dépend de Shizuku (à relancer après chaque redémarrage). Active « Associer » une fois pour toutes.") {
+                    if (!Iso.requestCrossProfileApps(this@MainActivity))
+                        Toast.makeText(this@MainActivity, "Option indisponible sur ce téléphone", Toast.LENGTH_LONG).show()
+                })
             }
             add(Check(if (Shell.granted()) true else null, "Shizuku (optionnel)", getString(when {
                 !Shell.installed(this@MainActivity) -> R.string.shizuku_off

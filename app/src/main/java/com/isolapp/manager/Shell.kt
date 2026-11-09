@@ -57,6 +57,16 @@ object Shell {
         valid(pkg) && CLS_RE.matches(cls) &&
             ok("pm ${if (enabled) "enable" else "disable"} --user $user '$pkg/$cls'")
 
+    /** Shizuku peut-il agir dans cet utilisateur (restriction « débogage » levée) ? */
+    fun canReachUser(user: Int) = granted() && run("pm list packages --user $user com.isolapp.manager").second.contains("package:")
+
+    /** Lance une action d'Isolateur dans l'espace isolé, sans passer par les filtres inter-profils. */
+    fun startInUser(user: Int, cls: String, action: String, pkgExtra: String? = null): Boolean {
+        val extra = pkgExtra?.takeIf { valid(it) }?.let { " --es pkg $it" } ?: ""
+        val out = run("am start --user $user -n com.isolapp.manager/$cls -a $action$extra").second
+        return !out.contains("Error", true) && !out.contains("Exception")
+    }
+
     fun setEnabled(pkg: String, user: Int, enabled: Boolean) =
         valid(pkg) && ok(if (enabled) "pm enable --user $user $pkg" else "pm disable-user --user $user $pkg")
 }
