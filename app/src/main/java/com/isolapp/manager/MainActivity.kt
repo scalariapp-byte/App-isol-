@@ -144,7 +144,6 @@ class MainActivity : AppCompatActivity() {
         appsHeader.findViewById<com.google.android.material.chip.Chip>(R.id.chipRemoved)
             .setOnCheckedChangeListener { _, c -> showRemoved = c; refresh() }
 
-        Updater.check(this)
         if (!getSharedPreferences("iso", MODE_PRIVATE).getBoolean("guide_seen", false)) showGuide(0)
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
@@ -158,6 +157,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (!Iso.isIsolatedSide(this)) Updater.check(this)
         if (::heroTitle.isInitialized) refresh()
     }
 

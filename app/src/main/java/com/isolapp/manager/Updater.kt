@@ -11,11 +11,13 @@ import java.net.URL
 object Updater {
     private const val API = "https://api.github.com/repos/scalariapp-byte/App-isol-/releases/tags/latest"
     private const val APK = "https://github.com/scalariapp-byte/App-isol-/releases/download/latest/Isolateur.apk"
-    private var checked = false
+    private var lastCheck = 0L
 
     fun check(activity: Activity, manual: Boolean = false) {
-        if (checked && !manual) return
-        checked = true
+        // Vérifie à chaque retour dans l'appli (au plus une fois toutes les 2 min, limite de l'API GitHub).
+        val now = System.currentTimeMillis()
+        if (!manual && now - lastCheck < 120_000) return
+        lastCheck = now
         fun info(msg: String) { if (manual) activity.runOnUiThread { android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_SHORT).show() } }
         Thread {
             val remote = runCatching {
