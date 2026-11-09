@@ -13,9 +13,10 @@ object Updater {
     private const val APK = "https://github.com/scalariapp-byte/App-isol-/releases/download/latest/Isolateur.apk"
     private var checked = false
 
-    fun check(activity: Activity) {
-        if (checked) return
+    fun check(activity: Activity, manual: Boolean = false) {
+        if (checked && !manual) return
         checked = true
+        fun info(msg: String) { if (manual) activity.runOnUiThread { android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_SHORT).show() } }
         Thread {
             val remote = runCatching {
                 val c = URL(API).openConnection() as HttpURLConnection
@@ -23,10 +24,10 @@ object Updater {
                 c.setRequestProperty("Accept", "application/vnd.github+json")
                 val body = c.inputStream.bufferedReader().use { it.readText() }
                 Regex("versionCode=(\\d+)").find(body)?.groupValues?.get(1)?.toLong()
-            }.getOrNull() ?: return@Thread
+            }.getOrNull() ?: return@Thread info("Impossible de vérifier (pas de connexion ?)")
             val local = activity.packageManager.getPackageInfo(activity.packageName, 0).longVersionCode
             // versionCode publié = numéro de build ; versionCode installé = 100 + numéro de build
-            if (100 + remote <= local) return@Thread
+            if (100 + remote <= local) return@Thread info("Tu as la dernière version ✓")
             activity.runOnUiThread {
                 if (activity.isFinishing) return@runOnUiThread
                 MaterialAlertDialogBuilder(activity)

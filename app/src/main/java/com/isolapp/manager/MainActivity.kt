@@ -14,6 +14,7 @@ import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnShizuku: MaterialButton
     private lateinit var cardSteps: View
     private lateinit var diagView: View
+    private lateinit var settingsView: LinearLayout
     private lateinit var list: RecyclerView
     private lateinit var tabs: com.google.android.material.bottomnavigation.BottomNavigationView
     private lateinit var steps: List<TextView>
@@ -92,6 +94,11 @@ class MainActivity : AppCompatActivity() {
         shizukuDot = header.findViewById(R.id.shizukuDot)
         btnShizuku = header.findViewById(R.id.btnShizuku)
         cardSteps = header.findViewById(R.id.cardSteps)
+        header.findViewById<View>(R.id.stepsHide).setOnClickListener {
+            getSharedPreferences("iso", MODE_PRIVATE).edit().putBoolean("show_steps", false).apply()
+            cardSteps.visibility = View.GONE
+            Toast.makeText(this, "Masqué. Réaffichable dans Réglages → Affichage", Toast.LENGTH_LONG).show()
+        }
         steps = listOf(R.id.step1, R.id.step2, R.id.step3, R.id.step4).map { header.findViewById(it) }
 
         adapter = AppAdapter(onAction = ::onAppAction, onMore = ::onAppMore)
@@ -102,6 +109,11 @@ class MainActivity : AppCompatActivity() {
         val homeTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(header))
         val appsTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(appsHeader), adapter)
         val diagTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(diagView))
+        settingsView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = RecyclerView.LayoutParams(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT)
+        }
+        val settingsTab = androidx.recyclerview.widget.ConcatAdapter(HeaderAdapter(settingsView))
         list = findViewById(R.id.list)
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = homeTab
@@ -110,6 +122,7 @@ class MainActivity : AppCompatActivity() {
             list.adapter = when (item.itemId) {
                 R.id.tab_apps -> appsTab
                 R.id.tab_diag -> { runDiagnostic(); diagTab }
+                R.id.tab_settings -> { renderSettings(); settingsTab }
                 else -> homeTab
             }
             list.scheduleLayoutAnimation()
@@ -473,6 +486,101 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    // ---------- Réglages ----------
+
+    private class Row(val icon: Int, val title: String, val sub: String? = null, val checked: Boolean? = null, val danger: Boolean = false, val action: (Boolean) -> Unit)
+
+    private fun renderSettings() {
+        val sp = getSharedPreferences("iso", MODE_PRIVATE)
+        val has = Iso.isolatedProfile(this) != null
+        val xiaomi = Build.MANUFACTURER.equals("xiaomi", true)
+        val version = packageManager.getPackageInfo(packageName, 0).versionName
+        val sections = buildList {
+            add("Affichage" to listOfNotNull(
+                Row(R.drawable.ic_help, "Afficher « Par où commencer »", "La carte d'étapes sur l'accueil", sp.getBoolean("show_steps", true)) {
+                    sp.edit().putBoolean("show_steps", it).apply(); refresh()
+                },
+                Row(R.drawable.ic_home, "Écran d'accueil Isolateur", if (isDefaultHome()) "Actif ✓ : onglet Travail et 💼 cachés" else "Inactif : touche pour l'activer") { chooseHome() },
+                if (xiaomi) Row(R.drawable.ic_apps, "Gestes plein écran (Xiaomi)", "Garder les gestes avec l'écran d'accueil Isolateur") { xiaomiGestures() } else null,
+            ))
+            if (has) add("Automatisation" to listOf(
+                Row(R.drawable.ic_notif, "Isoler chaque nouvelle appli", "Tout ce que tu installes va dans l'espace isolé", Prefs.monitor(this@MainActivity)) { swAuto.isChecked = it },
+                Row(R.drawable.ic_search, "Play Store → espace isolé", "Désactive le Play Store normal (Shizuku)", Prefs.defaultMode(this@MainActivity)) { swDefault.isChecked = it },
+            ))
+            if (has) add("Espace isolé" to listOfNotNull(
+                Row(R.drawable.ic_apps, "Mes applis isolées", "Endormir, réveiller, désinstaller") { crossProfile(Iso.ACTION_OPEN_MANAGER) },
+                Row(R.drawable.ic_search, "Play Store de l'espace", "Ce que tu y installes reste isolé") { crossProfile(Iso.ACTION_OPEN_STORE) },
+                Row(R.drawable.ic_diag, "Installer un fichier APK", "Directement dans l'espace isolé") { crossProfile(Iso.ACTION_INSTALL_APK) },
+                if (Build.VERSION.SDK_INT >= 30) Row(R.drawable.ic_notif, "Liaison permanente", if (Iso.crossProfileAppsAllowed(this@MainActivity)) "Active ✓" else "Pour ne plus dépendre de Shizuku") {
+                    if (!Iso.requestCrossProfileApps(this@MainActivity)) Toast.makeText(this@MainActivity, "Déjà active ou indisponible", Toast.LENGTH_SHORT).show()
+                } else null,
+            ))
+            add("Super-pouvoirs" to listOf(
+                Row(R.drawable.ic_settings, "Shizuku", getString(when {
+                    !Shell.installed(this@MainActivity) -> R.string.shizuku_off
+                    !Shell.running() -> R.string.shizuku_stopped
+                    !Shell.granted() -> R.string.shizuku_need_perm
+                    else -> R.string.shizuku_ok
+                })) { onShizukuButton() },
+            ))
+            add("Applis liées" to listOf(
+                Row(R.drawable.ic_diag, "Gestionnaire de fichiers", "Bloquer le démarrage des applis depuis le gestionnaire") {
+                    val i = packageManager.getLaunchIntentForPackage("com.scalari.fichiers")
+                        ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/scalariapp-byte/Gestionnaire-de-fichiers-android/releases/latest"))
+                    runCatching { startActivity(i) }
+                },
+            ))
+            add("Mises à jour" to listOf(
+                Row(R.drawable.ic_notif, "Vérifier maintenant", "Version installée : $version") { Updater.check(this@MainActivity, manual = true) },
+            ))
+            add("Aide" to listOf(
+                Row(R.drawable.ic_help, "Revoir le guide", "Comment ça marche, en 6 écrans") { showGuide(0) },
+                Row(R.drawable.ic_diag, "Diagnostic", "Trouver et réparer les problèmes") { tabs.selectedItemId = R.id.tab_diag },
+                Row(R.drawable.ic_diag, "Copier le rapport technique", "À envoyer en cas de souci") { copyReport() },
+            ))
+            if (has) add("Zone dangereuse" to listOf(
+                Row(R.drawable.ic_more, "Tout supprimer", "Supprime l'espace isolé, ses applis, puis Isolateur", danger = true) { confirmRemoveSpace() },
+            ))
+        }
+        settingsView.removeAllViews()
+        val d = resources.displayMetrics.density
+        for ((title, rows) in sections) {
+            settingsView.addView(TextView(this).apply {
+                text = title
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+                setTextColor(com.google.android.material.color.MaterialColors.getColor(this, if (title == "Zone dangereuse") androidx.appcompat.R.attr.colorError else androidx.appcompat.R.attr.colorPrimary))
+                setPadding((32 * d).toInt(), (20 * d).toInt(), 0, (8 * d).toInt())
+            })
+            val card = com.google.android.material.card.MaterialCardView(this).apply {
+                radius = 24 * d
+                setContentPadding(0, (4 * d).toInt(), 0, (4 * d).toInt())
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = (16 * d).toInt(); marginEnd = (16 * d).toInt()
+                }
+            }
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            for (r in rows) {
+                val v = layoutInflater.inflate(R.layout.item_setting, col, false)
+                v.findViewById<ImageView>(R.id.sIcon).setImageResource(r.icon)
+                v.findViewById<TextView>(R.id.sTitle).apply {
+                    text = r.title
+                    if (r.danger) setTextColor(com.google.android.material.color.MaterialColors.getColor(this, androidx.appcompat.R.attr.colorError))
+                }
+                v.findViewById<TextView>(R.id.sSub).apply { text = r.sub; visibility = if (r.sub == null) View.GONE else View.VISIBLE }
+                val sw = v.findViewById<MaterialSwitch>(R.id.sSwitch)
+                if (r.checked != null) {
+                    sw.visibility = View.VISIBLE
+                    sw.isChecked = r.checked
+                    sw.setOnCheckedChangeListener { _, c -> r.action(c) }
+                    v.setOnClickListener { sw.toggle() }
+                } else v.setOnClickListener { r.action(true) }
+                col.addView(v)
+            }
+            card.addView(col)
+            settingsView.addView(card)
+        }
+    }
+
     // ---------- Diagnostic ----------
 
     private data class Check(val ok: Boolean?, val title: String, val text: String, val fix: (() -> Unit)? = null)
@@ -691,7 +799,8 @@ class MainActivity : AppCompatActivity() {
             steps[i].alpha = if (done) 0.6f else 1f
             steps[i].setOnClickListener { if (has || i == 0) action() }
         }
-        cardSteps.visibility = if (items.all { it.first }) View.GONE else View.VISIBLE
+        val show = getSharedPreferences("iso", MODE_PRIVATE).getBoolean("show_steps", true)
+        cardSteps.visibility = if (!show || items.all { it.first }) View.GONE else View.VISIBLE
     }
 
     private fun hasIsolatedApp(): Boolean {
