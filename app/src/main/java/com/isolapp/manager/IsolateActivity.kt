@@ -25,7 +25,11 @@ class IsolateActivity : Activity() {
         try {
             startActivityForResult(Intent(Iso.ACTION_CLONE).putExtra(Iso.EXTRA_PKG, pkg), REQ_CLONE)
         } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "Espace isolé introuvable : créez-le d'abord", Toast.LENGTH_LONG).show()
+            val ok = Iso.startViaCrossProfileApps(this, Iso.ACTION_CLONE, Bundle().apply { putString(Iso.EXTRA_PKG, pkg) })
+            Toast.makeText(
+                this, if (ok) "Copiée dans l'espace isolé" else "Liaison avec l'espace cassée : ouvre l'onglet Diagnostic",
+                Toast.LENGTH_LONG
+            ).show()
             finish()
         }
     }

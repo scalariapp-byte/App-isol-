@@ -47,6 +47,10 @@ object Iso {
         runCatching { dpm.setOrganizationName(admin, ctx.getString(R.string.profile_name)) }
         runCatching { dpm.setProfileEnabled(admin) }
         runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES) }
+        // Laisse Shizuku (shell) agir dans l'espace isolé : réparation et isolation silencieuse.
+        runCatching { dpm.clearUserRestriction(admin, UserManager.DISALLOW_DEBUGGING_FEATURES) }
+        // Second canal officiel (Android 11+) : « Applis personnelles et professionnelles associées ».
+        if (android.os.Build.VERSION.SDK_INT >= 30) runCatching { dpm.setCrossProfilePackages(admin, setOf(ctx.packageName)) }
         runCatching {
             dpm.clearCrossProfileIntentFilters(admin)
             val filter = IntentFilter().apply {
@@ -65,6 +69,30 @@ object Iso {
             if (p !in Prefs.removed(ctx)) runCatching { dpm.setApplicationHidden(admin, p, false) }
         }
         syncComponents(ctx)
+    }
+
+    /** Second canal : lance une action dans l'espace isolé via CrossProfileApps (Android 11+). */
+    fun startViaCrossProfileApps(activity: android.app.Activity, action: String, extras: android.os.Bundle? = null): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 30) return false
+        val p = isolatedProfile(activity) ?: return false
+        val cpa = activity.getSystemService(CrossProfileApps::class.java)
+        if (!cpa.canInteractAcrossProfiles()) return false
+        return runCatching {
+            val i = Intent(action).setComponent(ComponentName(activity, WorkActionActivity::class.java))
+            extras?.let { i.putExtras(it) }
+            cpa.startActivity(i, p, activity)
+        }.isSuccess
+    }
+
+    fun crossProfileAppsAllowed(ctx: Context) = android.os.Build.VERSION.SDK_INT >= 30 &&
+        runCatching { ctx.getSystemService(CrossProfileApps::class.java).canInteractAcrossProfiles() }.getOrDefault(false)
+
+    /** Ouvre l'écran système qui permet d'associer applis perso et pro. Faux si indisponible. */
+    fun requestCrossProfileApps(activity: android.app.Activity): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 30) return false
+        val cpa = activity.getSystemService(CrossProfileApps::class.java)
+        return cpa.canRequestInteractAcrossProfiles() &&
+            runCatching { activity.startActivity(cpa.createRequestInteractAcrossProfilesIntent()) }.isSuccess
     }
 
     /** Identifiant utilisateur Android du profil isolé (UserHandle.hashCode() == identifiant). */

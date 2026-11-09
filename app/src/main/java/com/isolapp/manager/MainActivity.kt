@@ -401,12 +401,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Le canal vers l'espace isolé fonctionne-t-il ? (filtres inter-profils enregistrés) */
-    private fun channelOk() = packageManager.queryIntentActivities(Intent(Iso.ACTION_OPEN_MANAGER), 0).isNotEmpty()
+    private fun filterChannelOk() = packageManager.queryIntentActivities(Intent(Iso.ACTION_OPEN_MANAGER), 0).isNotEmpty()
+    private fun channelOk() = filterChannelOk() || Iso.crossProfileAppsAllowed(this)
 
     private fun crossProfile(action: String) {
         try {
             startActivity(Intent(action))
         } catch (e: ActivityNotFoundException) {
+            if (Iso.startViaCrossProfileApps(this, action)) return
             val p = Iso.isolatedProfile(this)
             val paused = p != null && runCatching {
                 getSystemService(android.os.UserManager::class.java).isQuietModeEnabled(p)
@@ -424,6 +426,11 @@ class MainActivity : AppCompatActivity() {
      * (ProvisionedActivity → ensureIsolatedSetup réenregistre les filtres et réactive les composants).
      */
     private fun repairChannel(done: (Boolean) -> Unit = {}) {
+        // 1) Canal officiel : il suffit que l'utilisateur active « Associer ».
+        if (!Iso.crossProfileAppsAllowed(this) && Iso.requestCrossProfileApps(this)) {
+            Toast.makeText(this, "Active « Autoriser l'association », puis reviens ici", Toast.LENGTH_LONG).show()
+            done(false); return
+        }
         val user = Iso.isolatedUserId(this)
         if (user == null || !Shell.granted()) {
             MaterialAlertDialogBuilder(this)
@@ -434,11 +441,22 @@ class MainActivity : AppCompatActivity() {
         }
         Toast.makeText(this, "Réparation en cours…", Toast.LENGTH_SHORT).show()
         Thread {
-            Shell.run("am start --user $user -n $packageName/${ProvisionedActivity::class.java.name}")
+            val out = Shell.run("am start --user $user -n $packageName/${ProvisionedActivity::class.java.name}").second
             Thread.sleep(2500)
             val ok = channelOk()
             runOnUiThread {
-                Toast.makeText(this, if (ok) "Réparé ✓" else "Réparation impossible : recrée l'espace isolé", Toast.LENGTH_LONG).show()
+                if (!ok) MaterialAlertDialogBuilder(this)
+                    .setTitle("Réparation impossible")
+                    .setMessage(
+                        (if (out.contains("does not have permission")) "Android bloque l'accès à l'espace isolé. " else "") +
+                            "L'espace a été créé par une ancienne version d'Isolateur et ne s'est pas configuré.\n\n" +
+                            "Solution (rien n'est perdu si tu n'as encore rien isolé) :\n" +
+                            "1. Paramètres → Comptes → Profil professionnel → Supprimer.\n" +
+                            "2. Reviens ici → « Créer l'espace isolé »."
+                    )
+                    .setPositiveButton("Ouvrir les Paramètres") { _, _ -> openIntent(Intent(Settings.ACTION_SYNC_SETTINGS)) }
+                    .setNegativeButton("Plus tard", null).show()
+                else Toast.makeText(this, "Réparé ✓", Toast.LENGTH_LONG).show()
                 refresh(); if (::diagView.isInitialized && list.adapter?.itemCount == 1 && tabs.selectedItemId == R.id.tab_diag) runDiagnostic()
                 done(ok)
             }
